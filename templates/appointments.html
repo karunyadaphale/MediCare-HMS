@@ -1,0 +1,406 @@
+{% extends "base.html" %}
+
+{% block title %}Appointment Schedule — MediCare HMS{% endblock %}
+{% block page_title %}Hospital Appointment Schedule{% endblock %}
+
+{% block content %}
+<!-- Role-Specialized Page Header -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
+    {% if current_user.role == 'doctor' %}
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h4 class="fw-bold mb-0 text-white">🩺 My OPD Clinical Consultations Queue</h4>
+            <span class="badge bg-success-subtle text-success border border-success-subtle">Doctor Station</span>
+        </div>
+        <p class="text-secondary small mb-0">
+            Assigned to <strong>{{ current_user.full_name }}</strong> • Consultation Rate: <strong class="text-success font-monospace">₹800.00</strong> • Real-time clinical OPD list
+        </p>
+    </div>
+    <div>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-teal fw-semibold">
+            <i class="bi bi-heart-pulse-fill me-1"></i>Return to OPD Station
+        </a>
+    </div>
+    {% elif current_user.role == 'receptionist' %}
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h4 class="fw-bold mb-0 text-white">🎟️ Front Desk Patient Queue & Token Desk</h4>
+            <span class="badge bg-info-subtle text-info border border-info-subtle">Admissions Desk</span>
+        </div>
+        <p class="text-secondary small mb-0">
+            Check-in arriving patients, issue OPD tokens, and schedule consultations with on-duty doctors
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('patient_new') }}" class="btn btn-teal-outline">
+            <i class="bi bi-person-fill-add me-1"></i>New Patient
+        </a>
+        <a href="{{ url_for('appointment_new') }}" class="btn btn-teal fw-semibold">
+            <i class="bi bi-calendar-plus-fill me-1"></i>Book Appointment Slot
+        </a>
+    </div>
+    {% else %}
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h4 class="fw-bold mb-0 text-white">📊 Master Hospital Appointments & Schedule</h4>
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Executive Admin</span>
+        </div>
+        <p class="text-secondary small mb-0">
+            Cross-departmental schedule synchronized across distributed hospital nodes • Real-time conflict validation
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('appointment_new') }}" class="btn btn-teal fw-semibold">
+            <i class="bi bi-calendar-plus-fill me-1"></i>Book New Appointment
+        </a>
+        <a href="{{ url_for('reports') }}" class="btn btn-teal-outline">
+            <i class="bi bi-graph-up me-1"></i>Financials (₹)
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- 1-Click Quick Status Filter Tabs -->
+<div class="quick-status-tabs">
+    <a href="{{ url_for('appointments', date=filter_date, doctor_id=doctor_filter, q=query) }}" 
+       class="quick-status-tab {% if not status_filter %}active{% endif %}">
+        <i class="bi bi-grid-fill"></i>
+        <span>All Consultations</span>
+        <span class="badge bg-secondary-subtle text-light rounded-pill ms-1">{{ count_all }}</span>
+    </a>
+    <a href="{{ url_for('appointments', status='Scheduled', date=filter_date, doctor_id=doctor_filter, q=query) }}" 
+       class="quick-status-tab {% if status_filter == 'Scheduled' %}active{% endif %}">
+        <i class="bi bi-clock-fill text-warning"></i>
+        <span>Scheduled</span>
+        <span class="badge bg-warning-subtle text-warning rounded-pill ms-1">{{ count_scheduled }}</span>
+    </a>
+    <a href="{{ url_for('appointments', status='Completed', date=filter_date, doctor_id=doctor_filter, q=query) }}" 
+       class="quick-status-tab {% if status_filter == 'Completed' %}active{% endif %}">
+        <i class="bi bi-check-circle-fill text-success"></i>
+        <span>Completed</span>
+        <span class="badge bg-success-subtle text-success rounded-pill ms-1">{{ count_completed }}</span>
+    </a>
+    <a href="{{ url_for('appointments', status='Cancelled', date=filter_date, doctor_id=doctor_filter, q=query) }}" 
+       class="quick-status-tab {% if status_filter == 'Cancelled' %}active{% endif %}">
+        <i class="bi bi-x-circle-fill text-danger"></i>
+        <span>Cancelled</span>
+        <span class="badge bg-danger-subtle text-danger rounded-pill ms-1">{{ count_cancelled }}</span>
+    </a>
+</div>
+
+<!-- Filters Bar -->
+<div class="card-custom mb-4">
+    <div class="card-body-custom py-3">
+        <form method="GET" action="{{ url_for('appointments') }}" class="row g-2 align-items-center">
+            <div class="col-md-3">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" value="{{ query }}" class="form-control form-control-custom border-start-0" placeholder="Search patient, doctor, reason...">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <input type="date" name="date" value="{{ filter_date }}" class="form-control form-control-custom" title="Filter by Appointment Date">
+            </div>
+            {% if current_user.role != 'doctor' %}
+            <div class="col-md-3">
+                <select name="doctor_id" class="form-select form-select-custom">
+                    <option value="">All Doctors</option>
+                    {% for doc in doctors %}
+                    <option value="{{ doc.doctor_id }}" {% if doctor_filter == doc.doctor_id %}selected{% endif %}>{{ doc.name }} ({{ doc.specialization }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="col-md-{{ '3' if current_user.role == 'doctor' else '2' }}">
+                <select name="status" class="form-select form-select-custom">
+                    <option value="">All Statuses</option>
+                    <option value="Scheduled" {% if status_filter == 'Scheduled' %}selected{% endif %}>Scheduled</option>
+                    <option value="Completed" {% if status_filter == 'Completed' %}selected{% endif %}>Completed</option>
+                    <option value="Cancelled" {% if status_filter == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+                </select>
+            </div>
+            <div class="col-md-1 d-flex gap-1">
+                <button type="submit" class="btn btn-teal w-100" title="Apply Filter"><i class="bi bi-funnel"></i></button>
+                {% if query or filter_date or doctor_filter or status_filter %}
+                <a href="{{ url_for('appointments') }}" class="btn btn-outline-secondary" title="Reset Filters"><i class="bi bi-x-lg"></i></a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Appointments Table Card -->
+<div class="card-custom">
+    <div class="card-header-custom d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h5 class="card-title-custom mb-0">
+            <i class="bi bi-calendar2-week text-teal" style="color: var(--primary-teal);"></i>
+            Hospital Consultation Schedule
+        </h5>
+        <div style="max-width: 260px;">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-filter"></i></span>
+                <input type="text" id="liveAptTableSearch" class="form-control form-control-custom border-start-0" placeholder="Live filter rows...">
+            </div>
+        </div>
+    </div>
+
+    <div class="card-body-custom p-0">
+        {% if appointments %}
+        <div class="table-responsive">
+            <table class="table-custom mb-0 table-filterable" id="appointmentsDataTable">
+                <thead>
+                    <tr>
+                        <th>Appointment ID</th>
+                        <th>Patient</th>
+                        <th>Doctor</th>
+                        <th>Date & Time</th>
+                        <th>Fee (₹)</th>
+                        <th>Reason for Visit</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for apt in appointments %}
+                    {% set fee = apt.consultation_fee if apt.consultation_fee else (750.0 if 'Smith' in apt.doctor_name else (500.0 if 'Patel' in apt.doctor_name else (900.0 if 'Rostova' in apt.doctor_name else (800.0 if 'Vance' in apt.doctor_name else 600.0)))) %}
+                    <tr>
+                        <td><span class="badge-id">{{ apt.appointment_id }}</span></td>
+                        <td>
+                            <a href="{{ url_for('patient_details', patient_id=apt.patient_id) }}" class="fw-semibold text-navy text-decoration-none d-block">
+                                {{ apt.patient_name }}
+                            </a>
+                            <span class="badge bg-info-subtle text-info border border-info-subtle font-monospace py-0 px-1" style="font-size: 0.72rem;">
+                                {{ apt.patient_id }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-navy">{{ apt.doctor_name }}</div>
+                            <small class="text-dimmed d-block">{{ apt.doctor_specialization }}</small>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-light">{{ apt.appointment_date }}</div>
+                            <small class="text-warning fw-medium"><i class="bi bi-clock-fill me-1"></i>{{ apt.appointment_time }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle font-monospace fw-bold" style="font-size: 0.85rem;">
+                                ₹{{ "%.2f"|format(fee) }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="appointment-reason-text">
+                                <i class="bi bi-chat-left-text-fill text-teal" style="color: var(--primary-teal); font-size: 0.82rem;"></i>
+                                <span>{{ apt.reason }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge-status badge-{{ apt.status | lower }}">
+                                <i class="bi bi-circle-fill" style="font-size: 6px;"></i>
+                                {{ apt.status }}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <div class="action-btn-group justify-content-end">
+                                <!-- Print OPD Token Slip Button -->
+                                <button type="button" class="action-icon-btn btn-slip" 
+                                        title="Print Appointment OPD Slip"
+                                        onclick="showOpdSlip('{{ apt.appointment_id }}', '{{ apt.patient_name }}', '{{ apt.patient_id }}', '{{ apt.doctor_name }}', '{{ apt.doctor_specialization }}', '{{ apt.appointment_date }}', '{{ apt.appointment_time }}', '{{ apt.reason }}', '{{ apt.status }}', '{{ fee }}')">
+                                    <i class="bi bi-receipt"></i>
+                                </button>
+
+                                {% if apt.status == 'Scheduled' %}
+                                <!-- Complete Button -->
+                                <form action="{{ url_for('appointment_update_status', appointment_id=apt.appointment_id) }}" method="POST" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    <input type="hidden" name="status" value="Completed">
+                                    <button type="submit" class="action-icon-btn btn-done" title="Mark Consultation Completed">
+                                        <i class="bi bi-check2"></i>
+                                    </button>
+                                </form>
+
+                                {% if current_user.role in ['admin', 'receptionist'] %}
+                                <!-- Reschedule Modal Trigger -->
+                                <button type="button" class="action-icon-btn btn-reschedule" data-bs-toggle="modal" data-bs-target="#rescheduleModal{{ apt.appointment_id }}" title="Reschedule Slot">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </button>
+
+                                <!-- Cancel Button -->
+                                <form action="{{ url_for('appointment_update_status', appointment_id=apt.appointment_id) }}" method="POST" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    <input type="hidden" name="status" value="Cancelled">
+                                    <button type="submit" class="action-icon-btn btn-cancel" title="Cancel Appointment">
+                                        <i class="bi bi-x-circle"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                                {% endif %}
+                            </div>
+
+                            <!-- Reschedule Modal -->
+                            {% if current_user.role in ['admin', 'receptionist'] and apt.status == 'Scheduled' %}
+                            <div class="modal fade text-start" id="rescheduleModal{{ apt.appointment_id }}" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title fw-bold text-white">Reschedule Appointment: {{ apt.appointment_id }}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <form action="{{ url_for('appointment_reschedule', appointment_id=apt.appointment_id) }}" method="POST">
+                                            <div class="modal-body">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                <p class="text-muted small mb-3">
+                                                    Rescheduling consultation for <strong>{{ apt.patient_name }}</strong> with <strong>{{ apt.doctor_name }}</strong>.
+                                                    Centralized MongoDB slot conflict checks will run automatically.
+                                                </p>
+                                                <div class="mb-3">
+                                                    <label class="form-label-custom">New Date <span class="text-danger">*</span></label>
+                                                    <input type="date" name="reschedule_date" value="{{ apt.appointment_date }}" class="form-control form-control-custom" required>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label-custom">New Time <span class="text-danger">*</span></label>
+                                                    <input type="time" name="reschedule_time" value="{{ apt.appointment_time }}" class="form-control form-control-custom" required>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                                                <button type="submit" class="btn btn-teal btn-sm">Confirm Reschedule</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon"><i class="bi bi-calendar-x"></i></div>
+            <div class="empty-state-title">No appointments found</div>
+            <p class="empty-state-desc">Try clearing the date/status filters or schedule a new consultation.</p>
+            {% if current_user.role in ['admin', 'receptionist'] %}
+            <a href="{{ url_for('appointment_new') }}" class="btn btn-teal btn-sm">
+                <i class="bi bi-plus-lg me-1"></i>Book Appointment
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Printable Hospital OPD Token Slip Modal -->
+<div class="modal fade" id="opdSlipModal" tabindex="-1" aria-labelledby="opdSlipModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0" style="background: transparent;">
+            <div class="opd-slip-card" id="printableOpdArea">
+                <!-- Slip Header -->
+                <div class="d-flex justify-content-between align-items-start border-bottom pb-3 mb-3">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="fs-4 text-teal" style="color: #0F9D8A;"><i class="bi bi-hospital-fill"></i></span>
+                            <h5 class="fw-bold mb-0 text-dark">MediCare Hospital</h5>
+                        </div>
+                        <p class="text-secondary small mb-0">Distributed Hospital Management System • OPD Pass</p>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-dark font-monospace fs-6 px-2 py-1" id="slipAptId">APT-1001</span>
+                    </div>
+                </div>
+
+                <!-- Barcode simulator -->
+                <div class="text-center my-2">
+                    <div class="opd-barcode-sim" id="slipBarcode">||||| ||| |||| || |||||||</div>
+                    <div class="text-muted font-monospace small" id="slipBarcodeText">APT-1001-OPD-TOKEN</div>
+                </div>
+
+                <!-- Slip Details Grid -->
+                <div class="p-3 bg-light rounded my-3 border text-dark">
+                    <div class="row g-2 small">
+                        <div class="col-6">
+                            <span class="text-secondary d-block">Patient Name:</span>
+                            <strong class="fs-6" id="slipPatientName">Alexander Hayes</strong>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-secondary d-block">Patient ID:</span>
+                            <strong class="font-monospace" id="slipPatientId">PAT-1001</strong>
+                        </div>
+                        <div class="col-6 mt-2">
+                            <span class="text-secondary d-block">Doctor:</span>
+                            <strong id="slipDoctorName">Dr. Sarah Smith</strong>
+                        </div>
+                        <div class="col-6 mt-2">
+                            <span class="text-secondary d-block">Specialization:</span>
+                            <span id="slipDoctorSpec">Cardiology</span>
+                        </div>
+                        <div class="col-6 mt-2">
+                            <span class="text-secondary d-block">Date & Time:</span>
+                            <strong class="text-primary" id="slipDateTime">2026-10-15 at 09:30</strong>
+                        </div>
+                        <div class="col-6 mt-2">
+                            <span class="text-secondary d-block">Consultation Fee:</span>
+                            <strong class="text-success fs-6" id="slipFee">₹750.00</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Clinical Note & Footer -->
+                <div class="small text-secondary mb-3">
+                    <strong>Reason for Consultation:</strong> <span id="slipReason">Routine cardiac checkup</span>
+                </div>
+
+                <div class="border-top pt-2 d-flex justify-content-between align-items-center small text-muted">
+                    <span><i class="bi bi-shield-check text-success me-1"></i>Central Node Verified</span>
+                    <span id="slipPrintDate">Print Slip</span>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-3 no-print">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-teal btn-sm fw-semibold" onclick="window.print()">
+                    <i class="bi bi-printer me-1"></i>Print Token Slip
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Live instantaneous client search in table
+document.addEventListener('DOMContentLoaded', () => {
+    const liveSearch = document.getElementById('liveAptTableSearch');
+    const tableBody = document.querySelector('#appointmentsDataTable tbody');
+    if (liveSearch && tableBody) {
+        liveSearch.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase().trim();
+            const rows = tableBody.querySelectorAll('tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(term) ? '' : 'none';
+            });
+        });
+    }
+});
+
+// Populate and display OPD Token Slip Modal
+function showOpdSlip(aptId, patName, patId, docName, docSpec, dateStr, timeStr, reasonStr, statusStr, feeStr) {
+    document.getElementById('slipAptId').textContent = aptId;
+    document.getElementById('slipPatientName').textContent = patName;
+    document.getElementById('slipPatientId').textContent = patId;
+    document.getElementById('slipDoctorName').textContent = docName;
+    document.getElementById('slipDoctorSpec').textContent = docSpec;
+    document.getElementById('slipDateTime').textContent = `${dateStr} at ${timeStr}`;
+    document.getElementById('slipReason').textContent = reasonStr || 'General consultation';
+    document.getElementById('slipFee').textContent = '₹' + parseFloat(feeStr).toFixed(2);
+    document.getElementById('slipBarcode').textContent = `||| ${aptId.replace('-', ' ')} |||||`;
+    document.getElementById('slipBarcodeText').textContent = `${aptId} • TOKEN • MEDI-CARE`;
+    document.getElementById('slipPrintDate').textContent = new Date().toLocaleString();
+
+    const slipModal = new bootstrap.Modal(document.getElementById('opdSlipModal'));
+    slipModal.show();
+}
+</script>
+{% endblock %}

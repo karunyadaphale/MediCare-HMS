@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Patient Directory — MediCare HMS{% endblock %}
+{% block page_title %}Patient Directory{% endblock %}
+
+{% block content %}
+<!-- Role-Specialized Patients Header -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    {% if current_user.role == 'doctor' %}
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h4 class="fw-bold mb-0 text-white">🩺 Clinical Patient Records & Medical Profiles</h4>
+            <span class="badge bg-success-subtle text-success border border-success-subtle">Clinical Records</span>
+        </div>
+        <p class="text-secondary small mb-0">Showing {{ patients | length }} patient clinical charts • Access blood groups, allergies, and consultation histories</p>
+    </div>
+    <div>
+        <a href="{{ url_for('appointments') }}" class="btn btn-teal fw-semibold">
+            <i class="bi bi-clock-history me-1"></i>My OPD Queue
+        </a>
+    </div>
+    {% elif current_user.role == 'receptionist' %}
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h4 class="fw-bold mb-0 text-white">👥 Patient Admissions & Front Desk Registration</h4>
+            <span class="badge bg-info-subtle text-info border border-info-subtle">Admissions Desk</span>
+        </div>
+        <p class="text-secondary small mb-0">Total {{ total_count }} registered patients • Rapid search by Phone, Patient ID, or Name</p>
+    </div>
+    <div>
+        <a href="{{ url_for('patient_new') }}" class="btn btn-teal fw-semibold">
+            <i class="bi bi-person-plus-fill me-1"></i>Register Walk-In Patient
+        </a>
+    </div>
+    {% else %}
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h4 class="fw-bold mb-0 text-white">📋 Master Hospital Patient Directory & Archives</h4>
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Executive Admin</span>
+        </div>
+        <p class="text-secondary small mb-0">Central database repository across all node replicas • Total {{ total_count }} active files</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('patient_new') }}" class="btn btn-teal fw-semibold">
+            <i class="bi bi-person-plus-fill me-1"></i>Register New Patient
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Search & Filter Card -->
+<div class="card-custom mb-4">
+    <div class="card-body-custom py-3">
+        <form method="GET" action="{{ url_for('patients') }}" class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" value="{{ query }}" class="form-control form-control-custom border-start-0" placeholder="Search by Patient ID, Name, Phone, Email...">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select name="blood_group" class="form-select form-select-custom">
+                    <option value="">All Blood Groups</option>
+                    {% for bg in ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] %}
+                    <option value="{{ bg }}" {% if blood_group == bg %}selected{% endif %}>{{ bg }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="gender" class="form-select form-select-custom">
+                    <option value="">All Genders</option>
+                    <option value="Male" {% if gender == 'Male' %}selected{% endif %}>Male</option>
+                    <option value="Female" {% if gender == 'Female' %}selected{% endif %}>Female</option>
+                    <option value="Other" {% if gender == 'Other' %}selected{% endif %}>Other</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-teal w-100"><i class="bi bi-funnel me-1"></i>Filter</button>
+                {% if query or blood_group or gender %}
+                <a href="{{ url_for('patients') }}" class="btn btn-outline-secondary" title="Reset Filters"><i class="bi bi-x-lg"></i></a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Patients List Table Card -->
+<div class="card-custom">
+    <div class="card-body-custom p-0">
+        {% if patients %}
+        <div class="table-responsive">
+            <table class="table-custom mb-0">
+                <thead>
+                    <tr>
+                        <th>Patient ID</th>
+                        <th>Name</th>
+                        <th>Age / Gender</th>
+                        <th>Phone</th>
+                        <th>Blood Group</th>
+                        <th>Registered Date</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in patients %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('patient_details', patient_id=p.patient_id) }}" class="badge-id text-decoration-none">
+                                {{ p.patient_id }}
+                            </a>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('patient_details', patient_id=p.patient_id) }}" class="fw-semibold text-navy text-decoration-none">
+                                {{ p.name }}
+                            </a>
+                            {% if p.email %}<div class="text-muted small">{{ p.email }}</div>{% endif %}
+                        </td>
+                        <td>{{ p.age }} yrs / {{ p.gender }}</td>
+                        <td>{{ p.phone }}</td>
+                        <td>
+                            {% if p.blood_group %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">{{ p.blood_group }}</span>
+                            {% else %}
+                            <span class="text-muted small">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted small">
+                            {{ p.created_at.strftime('%Y-%m-%d') if p.created_at else '—' }}
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('patient_details', patient_id=p.patient_id) }}" class="btn btn-light border" title="View Profile">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% if current_user.role in ['admin', 'receptionist'] %}
+                                <a href="{{ url_for('patient_edit', patient_id=p.patient_id) }}" class="btn btn-light border" title="Edit Patient">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{{ url_for('appointment_new', patient_id=p.patient_id) }}" class="btn btn-light border text-primary" title="Book Appointment">
+                                    <i class="bi bi-calendar-plus"></i>
+                                </a>
+                                {% endif %}
+                                {% if current_user.role == 'admin' %}
+                                <button type="button" class="btn btn-light border text-danger" title="Archive Record" data-bs-toggle="modal" data-bs-target="#archiveModal{{ p.patient_id }}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+
+                            <!-- Delete/Archive Confirmation Modal -->
+                            {% if current_user.role == 'admin' %}
+                            <div class="modal fade text-start" id="archiveModal{{ p.patient_id }}" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>Archive Patient</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p>Are you sure you want to archive <strong>{{ p.name }}</strong> (<code>{{ p.patient_id }}</code>)?</p>
+                                            <p class="text-muted small mb-0">This will soft-delete the patient record and auto-cancel any pending scheduled appointments.</p>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                                            <form action="{{ url_for('patient_delete', patient_id=p.patient_id) }}" method="POST">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                <button type="submit" class="btn btn-danger btn-sm">Confirm Archive</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if total_pages > 1 %}
+        <div class="p-3 border-top d-flex justify-content-between align-items-center">
+            <span class="text-muted small">Page {{ page }} of {{ total_pages }}</span>
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('patients', page=page-1, q=query, blood_group=blood_group, gender=gender) }}">Previous</a>
+                </li>
+                {% for p_num in range(1, total_pages + 1) %}
+                <li class="page-item {% if p_num == page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('patients', page=p_num, q=query, blood_group=blood_group, gender=gender) }}">{{ p_num }}</a>
+                </li>
+                {% endfor %}
+                <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('patients', page=page+1, q=query, blood_group=blood_group, gender=gender) }}">Next</a>
+                </li>
+            </ul>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon"><i class="bi bi-people"></i></div>
+            <div class="empty-state-title">No patient records found</div>
+            <p class="empty-state-desc">Try clearing your search query or register a new patient in the hospital directory.</p>
+            {% if current_user.role in ['admin', 'receptionist'] %}
+            <a href="{{ url_for('patient_new') }}" class="btn btn-teal btn-sm">
+                <i class="bi bi-plus-lg me-1"></i>Register Patient
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

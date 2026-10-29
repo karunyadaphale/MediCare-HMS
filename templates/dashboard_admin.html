@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Command Center — MediCare HMS{% endblock %}
+{% block page_title %}Hospital Administration Dashboard{% endblock %}
+
+{% block content %}
+<!-- Executive Welcome & Quick Actions Bar -->
+<div class="row align-items-center mb-4 g-3">
+    <div class="col-md-7">
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h4 class="fw-bold mb-0 text-white">Administrator Command Center</h4>
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle text-uppercase">Admin Portal</span>
+        </div>
+        <p class="text-secondary small mb-0">
+            Signed in as <strong>{{ current_user.full_name }}</strong> • 
+            Date: <strong class="text-white">{{ today_str }}</strong> • 
+            Central Node: <span class="text-success"><i class="bi bi-circle-fill me-1" style="font-size: 7px;"></i>Synchronized</span>
+        </p>
+    </div>
+    <div class="col-md-5 text-md-end">
+        <div class="d-flex flex-wrap gap-2 justify-content-md-end">
+            <a href="{{ url_for('doctor_new') }}" class="btn btn-teal-outline btn-sm">
+                <i class="bi bi-person-plus-fill me-1"></i>Add Doctor
+            </a>
+            <a href="{{ url_for('patient_new') }}" class="btn btn-teal-outline btn-sm">
+                <i class="bi bi-person-fill-add me-1"></i>Add Patient
+            </a>
+            <a href="{{ url_for('appointment_new') }}" class="btn btn-teal btn-sm">
+                <i class="bi bi-calendar-plus-fill me-1"></i>Book Slot
+            </a>
+            <a href="{{ url_for('reports') }}" class="btn btn-outline-info btn-sm">
+                <i class="bi bi-bar-chart-line me-1"></i>Analytics
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- 4 Executive Metrics -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div>
+                <div class="stat-title">Total Patients</div>
+                <div class="stat-value text-white">{{ total_patients }}</div>
+                <small class="text-secondary">Central database records</small>
+            </div>
+            <div class="stat-icon-wrapper stat-icon-teal">
+                <i class="bi bi-people-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div>
+                <div class="stat-title">Medical Staff</div>
+                <div class="stat-value text-white">{{ total_doctors }}</div>
+                <small class="text-secondary">Active hospital specialists</small>
+            </div>
+            <div class="stat-icon-wrapper stat-icon-blue">
+                <i class="bi bi-hospital-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div>
+                <div class="stat-title">Today's Consultations</div>
+                <div class="stat-value text-white">{{ today_appointments_count }}</div>
+                <small class="text-secondary">Scheduled for {{ today_str }}</small>
+            </div>
+            <div class="stat-icon-wrapper stat-icon-amber">
+                <i class="bi bi-clock-history"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div>
+                <div class="stat-title">Consultations Revenue</div>
+                <div class="stat-value text-success font-monospace" style="font-size: 1.6rem;">₹{{ "%.2f"|format(total_revenue) }}</div>
+                <small class="text-secondary">Fulfilled visit fees</small>
+            </div>
+            <div class="stat-icon-wrapper stat-icon-green">
+                <i class="bi bi-cash-stack"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Admin Grid -->
+<div class="row g-4">
+    <!-- Left Column: Hospital Schedule & Architecture Telemetry -->
+    <div class="col-lg-8">
+        <div class="card-custom mb-4">
+            <div class="card-header-custom d-flex justify-content-between align-items-center">
+                <h5 class="card-title-custom mb-0">
+                    <i class="bi bi-calendar2-check text-teal" style="color: var(--primary-teal);"></i>
+                    Today's Hospital Consultations
+                </h5>
+                <a href="{{ url_for('appointments') }}" class="btn btn-sm btn-link text-decoration-none">
+                    View Master Calendar <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-body-custom p-0">
+                {% if today_appointments %}
+                <div class="table-responsive">
+                    <table class="table-custom mb-0">
+                        <thead>
+                            <tr>
+                                <th>Appointment ID</th>
+                                <th>Patient</th>
+                                <th>Doctor</th>
+                                <th>Time</th>
+                                <th>Fee (₹)</th>
+                                <th>Status</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for apt in today_appointments %}
+                            {% set fee = apt.consultation_fee if apt.consultation_fee else (750.0 if 'Smith' in apt.doctor_name else (500.0 if 'Patel' in apt.doctor_name else (900.0 if 'Rostova' in apt.doctor_name else (800.0 if 'Vance' in apt.doctor_name else 600.0)))) %}
+                            <tr>
+                                <td><span class="badge-id">{{ apt.appointment_id }}</span></td>
+                                <td>
+                                    <a href="{{ url_for('patient_details', patient_id=apt.patient_id) }}" class="fw-semibold text-white text-decoration-none">
+                                        {{ apt.patient_name }}
+                                    </a>
+                                    <span class="badge bg-info-subtle text-info border border-info-subtle font-monospace py-0 px-1 d-inline-block" style="font-size: 0.7rem;">
+                                        {{ apt.patient_id }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold text-white">{{ apt.doctor_name }}</div>
+                                    <small class="text-secondary">{{ apt.doctor_specialization }}</small>
+                                </td>
+                                <td>
+                                    <span class="text-warning fw-medium"><i class="bi bi-clock-fill me-1"></i>{{ apt.appointment_time }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle font-monospace fw-bold">
+                                        ₹{{ "%.2f"|format(fee) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge-status badge-{{ apt.status | lower }}">
+                                        {{ apt.status }}
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    {% if apt.status == 'Scheduled' %}
+                                    <form action="{{ url_for('appointment_update_status', appointment_id=apt.appointment_id) }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                        <input type="hidden" name="status" value="Completed">
+                                        <button type="submit" class="action-icon-btn btn-done" title="Mark Done">
+                                            <i class="bi bi-check2"></i>
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <span class="text-secondary small">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon"><i class="bi bi-calendar-x"></i></div>
+                    <div class="empty-state-title">No appointments scheduled for today</div>
+                    <p class="empty-state-desc">All clinic queues are currently clear.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Central Distributed Telemetry Panel -->
+        <div class="p-3 rounded-3 border mb-4" style="background-color: #111C2B; border-color: #1F334A !important;">
+            <div class="d-flex align-items-center gap-3">
+                <div class="p-3 rounded text-info fs-3" style="background-color: rgba(56, 189, 248, 0.12);">
+                    <i class="bi bi-hdd-network"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <h6 class="fw-bold mb-0 text-white">Centralized Distributed Node Telemetry</h6>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle">Online</span>
+                    </div>
+                    <p class="text-secondary small mb-0">
+                        Admin Session Connected from IP: <strong class="text-white font-monospace">{{ client_ip }}</strong> • 
+                        Central Database: <strong class="text-white font-monospace">{{ db_health.database }}</strong> ({{ 'In-Memory Resilient Node' if db_health.is_mock else 'MongoDB Atlas Cloud Cluster' }}) •
+                        Atomic Counters: <strong>Locked & Synchronized</strong>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Status Doughnut Chart & Recent Staff Load -->
+    <div class="col-lg-4">
+        <!-- Status Chart Card -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom mb-0">
+                    <i class="bi bi-pie-chart text-teal" style="color: var(--primary-teal);"></i>
+                    Hospital Status Ratio
+                </h5>
+            </div>
+            <div class="card-body-custom">
+                <div style="height: 190px; position: relative;">
+                    <canvas id="adminStatusChart"></canvas>
+                </div>
+                <div class="d-flex justify-content-around mt-3 text-center border-top pt-2" style="border-top-color: #1E3048 !important;">
+                    <div>
+                        <div class="text-secondary small">Scheduled</div>
+                        <div class="fw-bold text-warning">{{ status_counts['Scheduled'] }}</div>
+                    </div>
+                    <div>
+                        <div class="text-secondary small">Completed</div>
+                        <div class="fw-bold text-success">{{ status_counts['Completed'] }}</div>
+                    </div>
+                    <div>
+                        <div class="text-secondary small">Cancelled</div>
+                        <div class="fw-bold text-danger">{{ status_counts['Cancelled'] }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Patient Registrations -->
+        <div class="card-custom">
+            <div class="card-header-custom d-flex justify-content-between align-items-center">
+                <h5 class="card-title-custom mb-0">
+                    <i class="bi bi-person-lines-fill text-teal" style="color: var(--primary-teal);"></i>
+                    Recent Registrations
+                </h5>
+                <a href="{{ url_for('patients') }}" class="btn btn-sm btn-link text-decoration-none">All</a>
+            </div>
+            <div class="card-body-custom p-0">
+                {% if recent_patients %}
+                <ul class="list-group list-group-flush">
+                    {% for p in recent_patients %}
+                    <li class="list-group-item d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="avatar-circle" style="width: 34px; height: 34px; font-size: 0.82rem; background: var(--primary-teal); color: #0B131F;">
+                                {{ p.name[:1] | upper }}
+                            </div>
+                            <div>
+                                <a href="{{ url_for('patient_details', patient_id=p.patient_id) }}" class="fw-semibold text-white text-decoration-none d-block small">
+                                    {{ p.name }}
+                                </a>
+                                <span class="badge-id" style="font-size: 0.7rem;">{{ p.patient_id }}</span>
+                            </div>
+                        </div>
+                        <span class="text-secondary small">{{ p.gender }}, Age {{ p.age }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="p-3 text-center text-secondary small">No patient records.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const ctx = document.getElementById('adminStatusChart');
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Scheduled', 'Completed', 'Cancelled'],
+                datasets: [{
+                    data: [
+                        {{ status_counts['Scheduled'] }},
+                        {{ status_counts['Completed'] }},
+                        {{ status_counts['Cancelled'] }}
+                    ],
+                    backgroundColor: ['#F59E0B', '#10B981', '#EF4444'],
+                    borderWidth: 3,
+                    borderColor: '#131E2E'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 }, color: '#94A3B8' } }
+                },
+                cutout: '65%'
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

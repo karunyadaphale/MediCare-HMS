@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit Doctor' if is_edit else 'Add Doctor' }} — MediCare HMS{% endblock %}
+{% block page_title %}{{ 'Edit Doctor Profile' if is_edit else 'Add Medical Staff' }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card-custom">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-hospital text-teal" style="color: var(--primary-teal);"></i>
+                    {{ 'Update Profile: ' ~ doctor.name ~ ' (' ~ doctor.doctor_id ~ ')' if is_edit else 'New Doctor Registration Form' }}
+                </h5>
+                <a href="{{ url_for('doctors') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Doctors
+                </a>
+            </div>
+
+            <div class="card-body-custom">
+                {% if not is_edit %}
+                <div class="alert alert-info py-2 px-3 small d-flex align-items-center gap-2 mb-4">
+                    <i class="bi bi-info-circle-fill fs-5"></i>
+                    <div>
+                        <strong>Atomic Sequence Generation:</strong> A unique Doctor ID (e.g. <code>DOC-1006</code>) will be allocated from the centralized database sequence counter.
+                    </div>
+                </div>
+                {% endif %}
+
+                <form method="POST" action="{{ url_for('doctor_edit', doctor_id=doctor.doctor_id) if is_edit else url_for('doctor_new') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                    <div class="row g-3">
+                        <!-- Full Name -->
+                        <div class="col-md-6">
+                            <label class="form-label-custom" for="name">Doctor Full Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-custom" id="name" name="name" 
+                                   value="{{ doctor.name if doctor else (form_data.name if form_data else '') }}" 
+                                   required placeholder="e.g. Dr. Arthur Pendelton, MD">
+                        </div>
+
+                        <!-- Specialization -->
+                        <div class="col-md-6">
+                            <label class="form-label-custom" for="specialization">Medical Specialization <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-custom" id="specialization" name="specialization" 
+                                   value="{{ doctor.specialization if doctor else (form_data.specialization if form_data else '') }}" 
+                                   required placeholder="e.g. Cardiology, Neurology, Pediatrics">
+                        </div>
+
+                        <!-- Department -->
+                        <div class="col-md-6">
+                            <label class="form-label-custom" for="department">Hospital Department <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-custom" id="department" name="department" 
+                                   value="{{ doctor.department if doctor else (form_data.department if form_data else '') }}" 
+                                   required placeholder="e.g. Internal Medicine, Surgery">
+                        </div>
+
+                        <!-- Phone -->
+                        <div class="col-md-6">
+                            <label class="form-label-custom" for="phone">Contact Phone <span class="text-danger">*</span></label>
+                            <input type="tel" class="form-control form-control-custom" id="phone" name="phone" 
+                                   value="{{ doctor.phone if doctor else (form_data.phone if form_data else '') }}" 
+                                   required placeholder="+1 (555) 000-0000">
+                        </div>
+
+                        <!-- Email -->
+                        <div class="col-md-6">
+                            <label class="form-label-custom" for="email">Email Address <span class="text-muted small">(Staff Mail)</span></label>
+                            <input type="email" class="form-control form-control-custom" id="email" name="email" 
+                                   value="{{ doctor.email if doctor else (form_data.email if form_data else '') }}" 
+                                   placeholder="doctor@medicare.local">
+                        </div>
+
+                        <!-- Consultation Fee -->
+                        <div class="col-md-6">
+                            <label class="form-label-custom" for="consultation_fee">Consultation Fee (₹) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" class="form-control form-control-custom" id="consultation_fee" name="consultation_fee" 
+                                   value="{{ doctor.consultation_fee if doctor else (form_data.consultation_fee if form_data else '500') }}" 
+                                   required min="0">
+                        </div>
+
+                        <!-- Working Days / Availability -->
+                        <div class="col-12">
+                            <label class="form-label-custom" for="availability">Availability & Office Hours</label>
+                            <input type="text" class="form-control form-control-custom" id="availability" name="availability" 
+                                   value="{{ doctor.availability if doctor else (form_data.availability if form_data else 'Mon - Fri, 09:00 - 17:00') }}" 
+                                   placeholder="e.g. Mon - Fri, 09:00 - 17:00">
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                        <a href="{{ url_for('doctors') }}" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-teal px-4">
+                            <i class="bi bi-check-lg me-1"></i>
+                            {{ 'Save Changes' if is_edit else 'Register Doctor' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

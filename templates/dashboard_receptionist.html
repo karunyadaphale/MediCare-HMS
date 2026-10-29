@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+
+{% block title %}Receptionist Desk — MediCare HMS{% endblock %}
+{% block page_title %}Front Desk & Patient Admission Portal{% endblock %}
+
+{% block content %}
+<!-- Front Desk Header & Primary Actions -->
+<div class="row align-items-center mb-4 g-3">
+    <div class="col-md-7">
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h4 class="fw-bold mb-0 text-white">Front Desk & Patient Admissions</h4>
+            <span class="badge bg-info-subtle text-info border border-info-subtle text-uppercase">Reception Desk</span>
+        </div>
+        <p class="text-secondary small mb-0">
+            Station Officer: <strong>{{ current_user.full_name }}</strong> • 
+            Date: <strong class="text-white">{{ today_str }}</strong> • 
+            Status: <span class="text-success"><i class="bi bi-circle-fill me-1" style="font-size: 7px;"></i>Ready for Admissions</span>
+        </p>
+    </div>
+    <div class="col-md-5 text-md-end">
+        <div class="d-flex flex-wrap gap-2 justify-content-md-end">
+            <a href="{{ url_for('patient_new') }}" class="btn btn-teal fw-semibold">
+                <i class="bi bi-person-fill-add me-1"></i>Register New Patient
+            </a>
+            <a href="{{ url_for('appointment_new') }}" class="btn btn-teal-outline">
+                <i class="bi bi-calendar-plus-fill me-1"></i>Book Appointment Slot
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- 4 Front Desk Operational Metrics -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div>
+                <div class="stat-title">Today's Patient Queue</div>
+                <div class="stat-value text-warning">{{ today_appointments_count }}</div>
+                <small class="text-secondary">Appointments for today</small>
+            </div>
+            <div class="stat-icon-wrapper stat-icon-amber">
+                <i class="bi bi-person-lines-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div>
+                <div class="stat-title">Total Registered Patients</div>
+                <div class="stat-value text-white">{{ total_patients }}</div>
+                <small class="text-secondary">In hospital master records</small>
+            </div>
+            <div class="stat-icon-wrapper stat-icon-teal">
+                <i class="bi bi-people-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div>
+                <div class="stat-title">Doctors on Duty</div>
+                <div class="stat-value text-info">{{ total_doctors }}</div>
+                <small class="text-secondary">Specialists available</small>
+            </div>
+            <div class="stat-icon-wrapper stat-icon-blue">
+                <i class="bi bi-person-badge-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div>
+                <div class="stat-title">Fulfilled Check-Ins</div>
+                <div class="stat-value text-success">{{ status_counts['Completed'] }}</div>
+                <small class="text-secondary">Completed consultations</small>
+            </div>
+            <div class="stat-icon-wrapper stat-icon-green">
+                <i class="bi bi-check2-circle"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Reception Grid -->
+<div class="row g-4">
+    <!-- Left Column: Today's Admission & Appointment Queue -->
+    <div class="col-lg-8">
+        <div class="card-custom mb-4">
+            <div class="card-header-custom d-flex justify-content-between align-items-center">
+                <h5 class="card-title-custom mb-0">
+                    <i class="bi bi-clock-history text-teal" style="color: var(--primary-teal);"></i>
+                    Today's Check-In & Consultation Queue
+                </h5>
+                <a href="{{ url_for('appointments') }}" class="btn btn-sm btn-link text-decoration-none">
+                    View Master Calendar <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-body-custom p-0">
+                {% if today_appointments %}
+                <div class="table-responsive">
+                    <table class="table-custom mb-0">
+                        <thead>
+                            <tr>
+                                <th>Token / ID</th>
+                                <th>Patient Name</th>
+                                <th>Assigned Doctor</th>
+                                <th>Slot Time</th>
+                                <th>Fee (₹)</th>
+                                <th>Status</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for apt in today_appointments %}
+                            {% set fee = apt.consultation_fee if apt.consultation_fee else (750.0 if 'Smith' in apt.doctor_name else (500.0 if 'Patel' in apt.doctor_name else (900.0 if 'Rostova' in apt.doctor_name else (800.0 if 'Vance' in apt.doctor_name else 600.0)))) %}
+                            <tr>
+                                <td><span class="badge-id">{{ apt.appointment_id }}</span></td>
+                                <td>
+                                    <a href="{{ url_for('patient_details', patient_id=apt.patient_id) }}" class="fw-semibold text-white text-decoration-none d-block">
+                                        {{ apt.patient_name }}
+                                    </a>
+                                    <span class="badge bg-info-subtle text-info border border-info-subtle font-monospace py-0 px-1" style="font-size: 0.7rem;">
+                                        {{ apt.patient_id }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold text-white">{{ apt.doctor_name }}</div>
+                                    <small class="text-secondary">{{ apt.doctor_specialization }}</small>
+                                </td>
+                                <td>
+                                    <span class="text-warning fw-medium"><i class="bi bi-clock-fill me-1"></i>{{ apt.appointment_time }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle font-monospace fw-bold">
+                                        ₹{{ "%.2f"|format(fee) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge-status badge-{{ apt.status | lower }}">
+                                        {{ apt.status }}
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <div class="action-btn-group justify-content-end">
+                                        <!-- Print OPD Slip Button -->
+                                        <button type="button" class="action-icon-btn btn-slip" title="Print OPD Token Slip"
+                                                onclick="showOpdSlip('{{ apt.appointment_id }}', '{{ apt.patient_name }}', '{{ apt.patient_id }}', '{{ apt.doctor_name }}', '{{ apt.doctor_specialization }}', '{{ apt.appointment_date }}', '{{ apt.appointment_time }}', '{{ apt.reason }}', '{{ apt.status }}', '{{ fee }}')">
+                                            <i class="bi bi-receipt"></i>
+                                        </button>
+
+                                        {% if apt.status == 'Scheduled' %}
+                                        <form action="{{ url_for('appointment_update_status', appointment_id=apt.appointment_id) }}" method="POST" class="d-inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                            <input type="hidden" name="status" value="Completed">
+                                            <button type="submit" class="action-icon-btn btn-done" title="Check-In Completed">
+                                                <i class="bi bi-check2"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon"><i class="bi bi-calendar-x"></i></div>
+                    <div class="empty-state-title">No appointments in today's queue</div>
+                    <p class="empty-state-desc">You can book new consultation slots anytime.</p>
+                    <a href="{{ url_for('appointment_new') }}" class="btn btn-teal btn-sm">
+                        <i class="bi bi-plus-lg me-1"></i>Book Appointment
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Patient Admission Guide -->
+        <div class="p-3 rounded-3 border" style="background-color: #111C2B; border-color: #1F334A !important;">
+            <h6 class="fw-bold mb-2 text-white"><i class="bi bi-info-circle text-teal me-2" style="color: var(--primary-teal);"></i>Receptionist Workflow Checklist</h6>
+            <ol class="small text-secondary mb-0 ps-3">
+                <li>Check if patient already has a <strong>Patient ID (PAT-XXXX)</strong> in the system directory.</li>
+                <li>If new, click <strong>Register New Patient</strong> to allocate an atomic sequence ID.</li>
+                <li>Book a slot with the requested doctor and click the <strong>Receipt icon (<i class="bi bi-receipt"></i>)</strong> to print their OPD token slip.</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Right Column: Doctors on Duty Roster & Recent Registrations -->
+    <div class="col-lg-4">
+        <!-- Doctors Roster & Hours Card -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom d-flex justify-content-between align-items-center">
+                <h5 class="card-title-custom mb-0">
+                    <i class="bi bi-hospital text-teal" style="color: var(--primary-teal);"></i>
+                    Doctors on Duty Today
+                </h5>
+                <a href="{{ url_for('doctors') }}" class="btn btn-sm btn-link text-decoration-none">Roster</a>
+            </div>
+            <div class="card-body-custom p-0">
+                <ul class="list-group list-group-flush">
+                    {% for doc in doctors_on_duty %}
+                    <li class="list-group-item px-3 py-2 border-bottom">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <strong class="text-white small">{{ doc.name }}</strong>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle font-monospace">₹{{ "%.0f"|format(doc.consultation_fee) }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center small text-secondary">
+                            <span>{{ doc.specialization }}</span>
+                            <span class="text-warning"><i class="bi bi-clock me-1"></i>{{ doc.availability.split(',')[0] }}</span>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Recent Registered Patients -->
+        <div class="card-custom">
+            <div class="card-header-custom d-flex justify-content-between align-items-center">
+                <h5 class="card-title-custom mb-0">
+                    <i class="bi bi-person-plus text-teal" style="color: var(--primary-teal);"></i>
+                    Recent Registrations
+                </h5>
+                <a href="{{ url_for('patients') }}" class="btn btn-sm btn-link text-decoration-none">Directory</a>
+            </div>
+            <div class="card-body-custom p-0">
+                {% if recent_patients %}
+                <ul class="list-group list-group-flush">
+                    {% for p in recent_patients %}
+                    <li class="list-group-item d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+                        <div>
+                            <a href="{{ url_for('patient_details', patient_id=p.patient_id) }}" class="fw-semibold text-white text-decoration-none d-block small">
+                                {{ p.name }}
+                            </a>
+                            <span class="badge-id" style="font-size: 0.7rem;">{{ p.patient_id }}</span>
+                        </div>
+                        <a href="{{ url_for('appointment_new', patient_id=p.patient_id) }}" class="btn btn-sm btn-outline-info py-0 px-2" style="font-size: 0.78rem;">
+                            <i class="bi bi-calendar-plus me-1"></i>Book
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="p-3 text-center text-secondary small">No patient records.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Printable Hospital OPD Token Slip Modal -->
+<div class="modal fade" id="opdSlipModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0" style="background: transparent;">
+            <div class="opd-slip-card" id="printableOpdArea">
+                <div class="d-flex justify-content-between align-items-start border-bottom pb-3 mb-3">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="fs-4 text-teal" style="color: #0F9D8A;"><i class="bi bi-hospital-fill"></i></span>
+                            <h5 class="fw-bold mb-0 text-dark">MediCare Hospital</h5>
+                        </div>
+                        <p class="text-secondary small mb-0">Distributed Hospital Management System • OPD Pass</p>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-dark font-monospace fs-6 px-2 py-1" id="slipAptId">APT-1001</span>
+                    </div>
+                </div>
+
+                <div class="text-center my-2">
+                    <div class="opd-barcode-sim" id="slipBarcode">||||| ||| |||| || |||||||</div>
+                    <div class="text-muted font-monospace small" id="slipBarcodeText">APT-1001-OPD-TOKEN</div>
+                </div>
+
+                <div class="p-3 bg-light rounded my-3 border text-dark">
+                    <div class="row g-2 small">
+                        <div class="col-6">
+                            <span class="text-secondary d-block">Patient Name:</span>
+                            <strong class="fs-6" id="slipPatientName">Alexander Hayes</strong>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-secondary d-block">Patient ID:</span>
+                            <strong class="font-monospace" id="slipPatientId">PAT-1001</strong>
+                        </div>
+                        <div class="col-6 mt-2">
+                            <span class="text-secondary d-block">Doctor:</span>
+                            <strong id="slipDoctorName">Dr. Sarah Smith</strong>
+                        </div>
+                        <div class="col-6 mt-2">
+                            <span class="text-secondary d-block">Specialization:</span>
+                            <span id="slipDoctorSpec">Cardiology</span>
+                        </div>
+                        <div class="col-6 mt-2">
+                            <span class="text-secondary d-block">Date & Time:</span>
+                            <strong class="text-primary" id="slipDateTime">2026-10-15 at 09:30</strong>
+                        </div>
+                        <div class="col-6 mt-2">
+                            <span class="text-secondary d-block">Consultation Fee:</span>
+                            <strong class="text-success fs-6" id="slipFee">₹750.00</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="small text-secondary mb-3">
+                    <strong>Reason for Consultation:</strong> <span id="slipReason">Routine cardiac checkup</span>
+                </div>
+
+                <div class="border-top pt-2 d-flex justify-content-between align-items-center small text-muted">
+                    <span><i class="bi bi-shield-check text-success me-1"></i>Central Node Verified</span>
+                    <span id="slipPrintDate">Print Slip</span>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-3 no-print">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-teal btn-sm fw-semibold" onclick="window.print()">
+                    <i class="bi bi-printer me-1"></i>Print Token Slip
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showOpdSlip(aptId, patName, patId, docName, docSpec, dateStr, timeStr, reasonStr, statusStr, feeStr) {
+    document.getElementById('slipAptId').textContent = aptId;
+    document.getElementById('slipPatientName').textContent = patName;
+    document.getElementById('slipPatientId').textContent = patId;
+    document.getElementById('slipDoctorName').textContent = docName;
+    document.getElementById('slipDoctorSpec').textContent = docSpec;
+    document.getElementById('slipDateTime').textContent = `${dateStr} at ${timeStr}`;
+    document.getElementById('slipReason').textContent = reasonStr || 'General consultation';
+    document.getElementById('slipFee').textContent = '₹' + parseFloat(feeStr).toFixed(2);
+    document.getElementById('slipBarcode').textContent = `||| ${aptId.replace('-', ' ')} |||||`;
+    document.getElementById('slipBarcodeText').textContent = `${aptId} • TOKEN • MEDI-CARE`;
+    document.getElementById('slipPrintDate').textContent = new Date().toLocaleString();
+
+    const slipModal = new bootstrap.Modal(document.getElementById('opdSlipModal'));
+    slipModal.show();
+}
+</script>
+{% endblock %}

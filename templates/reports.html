@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}Reports & Analytics — MediCare HMS{% endblock %}
+{% block page_title %}Hospital Analytics & Distributed Audit Trail{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h4 class="fw-bold mb-1 text-navy">Operational Reports & Centralized Logs</h4>
+        <p class="text-muted small mb-0">Aggregated statistics from MongoDB Atlas Central Database</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/api/stats" target="_blank" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-file-earmark-code me-1"></i>Export JSON Stats
+        </a>
+    </div>
+</div>
+
+<!-- Date Filter Form -->
+<div class="card-custom mb-4">
+    <div class="card-body-custom py-3">
+        <form method="GET" action="{{ url_for('reports') }}" class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text bg-light text-muted small">From Date</span>
+                    <input type="date" name="date_from" value="{{ date_from }}" class="form-control form-control-custom">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text bg-light text-muted small">To Date</span>
+                    <input type="date" name="date_to" value="{{ date_to }}" class="form-control form-control-custom">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-teal w-100"><i class="bi bi-funnel me-1"></i>Filter Scope</button>
+            </div>
+            <div class="col-md-2">
+                {% if date_from or date_to %}
+                <a href="{{ url_for('reports') }}" class="btn btn-outline-secondary w-100"><i class="bi bi-arrow-counterclockwise me-1"></i>Reset</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 4 Key Report Metrics -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div>
+                <div class="stat-title">Total Patients</div>
+                <div class="stat-value text-teal">{{ total_patients }}</div>
+                <small class="text-muted">Active database records</small>
+            </div>
+            <div class="stat-icon-wrapper stat-icon-teal"><i class="bi bi-people"></i></div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div>
+                <div class="stat-title">Active Doctors</div>
+                <div class="stat-value text-primary">{{ total_doctors }}</div>
+                <small class="text-muted">Staff availability</small>
+            </div>
+            <div class="stat-icon-wrapper stat-icon-blue"><i class="bi bi-person-badge"></i></div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div>
+                <div class="stat-title">Completed Consultations</div>
+                <div class="stat-value text-success">{{ status_counts['Completed'] }}</div>
+                <small class="text-muted">Fulfilled visits</small>
+            </div>
+            <div class="stat-icon-wrapper stat-icon-green"><i class="bi bi-check2-circle"></i></div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div>
+                <div class="stat-title">Cancelled / No-Show</div>
+                <div class="stat-value text-danger">{{ status_counts['Cancelled'] }}</div>
+                <small class="text-muted">Cancelled bookings</small>
+            </div>
+            <div class="stat-icon-wrapper stat-icon-amber"><i class="bi bi-x-circle"></i></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Chart: Status Distribution -->
+    <div class="col-lg-5">
+        <div class="card-custom h-100">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-pie-chart text-teal" style="color: var(--primary-teal);"></i>
+                    Appointment Status Breakdown
+                </h5>
+            </div>
+            <div class="card-body-custom">
+                <div style="height: 240px; position: relative;">
+                    <canvas id="reportsStatusChart"></canvas>
+                </div>
+                <div class="mt-3 text-center small text-muted">
+                    Total In Scope: <strong>{{ total_appointments }}</strong> Appointments
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Doctor Workload Aggregation Table -->
+    <div class="col-lg-7">
+        <div class="card-custom h-100">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-bar-chart-steps text-teal" style="color: var(--primary-teal);"></i>
+                    Doctor Workload & Consultations
+                </h5>
+            </div>
+            <div class="card-body-custom p-0">
+                {% if doctor_stats %}
+                <div class="table-responsive">
+                    <table class="table-custom mb-0">
+                        <thead>
+                            <tr>
+                                <th>Doctor</th>
+                                <th class="text-center">Scheduled</th>
+                                <th class="text-center">Completed</th>
+                                <th class="text-center">Cancelled</th>
+                                <th class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ds in doctor_stats %}
+                            <tr>
+                                <td class="fw-semibold text-navy">{{ ds._id }}</td>
+                                <td class="text-center"><span class="badge bg-warning-subtle text-warning border">{{ ds.scheduled }}</span></td>
+                                <td class="text-center"><span class="badge bg-success-subtle text-success border">{{ ds.completed }}</span></td>
+                                <td class="text-center"><span class="badge bg-danger-subtle text-danger border">{{ ds.cancelled }}</span></td>
+                                <td class="text-end fw-bold">{{ ds.total }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-4 text-center text-muted small">No appointment records for this date range.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Centralized Distributed Systems Audit Log (Academic PBL Showcase) -->
+<div class="card-custom">
+    <div class="card-header-custom">
+        <h5 class="card-title-custom">
+            <i class="bi bi-shield-lock-fill text-teal" style="color: var(--primary-teal);"></i>
+            Centralized Distributed Audit Trail (Recent 15 Events)
+        </h5>
+        <span class="badge bg-light text-dark border">Security & Multi-Client Auditing</span>
+    </div>
+    <div class="card-body-custom p-0">
+        {% if audit_logs %}
+        <div class="table-responsive">
+            <table class="table-custom mb-0 small">
+                <thead>
+                    <tr>
+                        <th>Timestamp (UTC)</th>
+                        <th>User</th>
+                        <th>Role</th>
+                        <th>Action</th>
+                        <th>Client IP</th>
+                        <th>Event Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in audit_logs %}
+                    <tr>
+                        <td class="font-monospace text-muted">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') if log.timestamp else '—' }}</td>
+                        <td class="fw-semibold text-navy">{{ log.user }}</td>
+                        <td><span class="user-role-badge role-{{ log.role }}">{{ log.role }}</span></td>
+                        <td><code class="text-primary">{{ log.action }}</code></td>
+                        <td><span class="badge bg-light text-dark border font-monospace">{{ log.client_ip }}</span></td>
+                        <td class="text-truncate text-muted" style="max-width: 250px;">{{ log.details | tojson }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-4 text-center text-muted small">No audit logs recorded yet.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const ctx = document.getElementById('reportsStatusChart');
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Scheduled', 'Completed', 'Cancelled'],
+                datasets: [{
+                    label: 'Count',
+                    data: [
+                        {{ status_counts['Scheduled'] }},
+                        {{ status_counts['Completed'] }},
+                        {{ status_counts['Cancelled'] }}
+                    ],
+                    backgroundColor: ['#F59E0B', '#10B981', '#EF4444'],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#94A3B8' },
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: { precision: 0, color: '#94A3B8' },
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

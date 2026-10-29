@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+
+{% block title %}Doctor Clinical Station — MediCare HMS{% endblock %}
+{% block page_title %}Doctor OPD Clinical Consultation Station{% endblock %}
+
+{% block content %}
+<!-- Doctor Profile Banner -->
+<div class="row align-items-center mb-4 g-3">
+    <div class="col-md-8">
+        <div class="d-flex align-items-center gap-3">
+            <div class="avatar-circle" style="width: 54px; height: 54px; font-size: 1.4rem; background: linear-gradient(135deg, #10B981, #059669); color: #FFFFFF;">
+                {{ doctor_profile.name.replace('Dr. ', '').strip()[:1] | upper if doctor_profile else 'D' }}
+            </div>
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <h4 class="fw-bold mb-0 text-white">{{ doctor_profile.name if doctor_profile else current_user.full_name }}</h4>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle">Attending Physician</span>
+                    <span class="badge-id">{{ doctor_profile.doctor_id if doctor_profile else current_user.doctor_id }}</span>
+                </div>
+                <p class="text-secondary small mb-0">
+                    <span class="text-info fw-medium">{{ doctor_profile.specialization if doctor_profile else 'Specialist' }}</span> • 
+                    <span>{{ doctor_profile.department if doctor_profile else 'OPD' }}</span> • 
+                    Consultation Fee: <strong class="text-success font-monospace">₹{{ "%.2f"|format(doctor_profile.consultation_fee if doctor_profile else 500) }}</strong>
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <span class="badge bg-light text-light border px-3 py-2" style="background-color: #172437 !important;">
+            <i class="bi bi-clock-history text-warning me-1"></i>Office Hours: {{ doctor_profile.availability.split(',')[0] if doctor_profile else 'Mon - Fri' }}
+        </span>
+    </div>
+</div>
+
+<!-- 4 Doctor Clinical Metrics -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div>
+                <div class="stat-title">My Queue Today</div>
+                <div class="stat-value text-warning">{{ my_today_appointments | length }}</div>
+                <small class="text-secondary">Consultations for {{ today_str }}</small>
+            </div>
+            <div class="stat-icon-wrapper stat-icon-amber">
+                <i class="bi bi-people-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div>
+                <div class="stat-title">Completed Today</div>
+                <div class="stat-value text-success">{{ my_completed_today_count }}</div>
+                <small class="text-secondary">Patients treated today</small>
+            </div>
+            <div class="stat-icon-wrapper stat-icon-green">
+                <i class="bi bi-check2-all"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div>
+                <div class="stat-title">Total Treated (All Time)</div>
+                <div class="stat-value text-info">{{ my_total_completed_count }}</div>
+                <small class="text-secondary">Completed consultations</small>
+            </div>
+            <div class="stat-icon-wrapper stat-icon-blue">
+                <i class="bi bi-heart-pulse-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div>
+                <div class="stat-title">Consultation Fee</div>
+                <div class="stat-value text-success font-monospace" style="font-size: 1.6rem;">
+                    ₹{{ "%.0f"|format(doctor_profile.consultation_fee if doctor_profile else 500) }}
+                </div>
+                <small class="text-secondary">Standard rate per visit</small>
+            </div>
+            <div class="stat-icon-wrapper stat-icon-teal">
+                <i class="bi bi-cash-coin"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Doctor OPD Main Grid -->
+<div class="row g-4">
+    <!-- Left Column: My Patient Queue Today -->
+    <div class="col-lg-8">
+        <div class="card-custom mb-4">
+            <div class="card-header-custom d-flex justify-content-between align-items-center">
+                <h5 class="card-title-custom mb-0">
+                    <i class="bi bi-person-lines-fill text-teal" style="color: var(--primary-teal);"></i>
+                    My Patient Queue for Today ({{ my_today_appointments | length }})
+                </h5>
+                <span class="text-secondary small">{{ today_str }}</span>
+            </div>
+            <div class="card-body-custom p-0">
+                {% if my_today_appointments %}
+                <div class="table-responsive">
+                    <table class="table-custom mb-0">
+                        <thead>
+                            <tr>
+                                <th>Token</th>
+                                <th>Patient Name</th>
+                                <th>Slot Time</th>
+                                <th>Reported Symptoms</th>
+                                <th>Status</th>
+                                <th class="text-end">Clinical Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for apt in my_today_appointments %}
+                            {% set fee = apt.consultation_fee if apt.consultation_fee else (doctor_profile.consultation_fee if doctor_profile else 500) %}
+                            <tr>
+                                <td><span class="badge-id">{{ apt.appointment_id }}</span></td>
+                                <td>
+                                    <a href="{{ url_for('patient_details', patient_id=apt.patient_id) }}" class="fw-semibold text-white text-decoration-none d-block">
+                                        {{ apt.patient_name }}
+                                    </a>
+                                    <span class="badge bg-info-subtle text-info border border-info-subtle font-monospace py-0 px-1" style="font-size: 0.7rem;">
+                                        {{ apt.patient_id }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="text-warning fw-medium"><i class="bi bi-clock-fill me-1"></i>{{ apt.appointment_time }}</span>
+                                </td>
+                                <td>
+                                    <div class="appointment-reason-text">
+                                        <i class="bi bi-chat-left-text-fill text-teal" style="color: var(--primary-teal); font-size: 0.8rem;"></i>
+                                        <span>{{ apt.reason }}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge-status badge-{{ apt.status | lower }}">
+                                        {{ apt.status }}
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <div class="action-btn-group justify-content-end">
+                                        <!-- View Profile -->
+                                        <a href="{{ url_for('patient_details', patient_id=apt.patient_id) }}" class="action-icon-btn btn-reschedule" title="View Patient Medical Profile">
+                                            <i class="bi bi-person-badge"></i>
+                                        </a>
+
+                                        <!-- Print OPD Slip -->
+                                        <button type="button" class="action-icon-btn btn-slip" title="Print Consultation Slip"
+                                                onclick="showOpdSlip('{{ apt.appointment_id }}', '{{ apt.patient_name }}', '{{ apt.patient_id }}', '{{ apt.doctor_name }}', '{{ apt.doctor_specialization }}', '{{ apt.appointment_date }}', '{{ apt.appointment_time }}', '{{ apt.reason }}', '{{ apt.status }}', '{{ fee }}')">
+                                            <i class="bi bi-receipt"></i>
+                                        </button>
+
+                                        {% if apt.status == 'Scheduled' %}
+                                        <form action="{{ url_for('appointment_update_status', appointment_id=apt.appointment_id) }}" method="POST" class="d-inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                            <input type="hidden" name="status" value="Completed">
+                                            <button type="submit" class="action-icon-btn btn-done" title="Complete Consultation">
+                                                <i class="bi bi-check2"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon"><i class="bi bi-clipboard2-check"></i></div>
+                    <div class="empty-state-title">No patients queued for today</div>
+                    <p class="empty-state-desc">You are all caught up on consultations for today.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Upcoming Schedule for this Doctor -->
+        <div class="card-custom">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom mb-0">
+                    <i class="bi bi-calendar3 text-teal" style="color: var(--primary-teal);"></i>
+                    My Upcoming Consultations
+                </h5>
+            </div>
+            <div class="card-body-custom p-0">
+                {% if my_upcoming_appointments %}
+                <div class="table-responsive">
+                    <table class="table-custom mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>Patient Name</th>
+                                <th>Reason</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for uapt in my_upcoming_appointments %}
+                            <tr>
+                                <td>
+                                    <strong class="text-white">{{ uapt.appointment_date }}</strong>
+                                    <span class="text-warning small ms-2"><i class="bi bi-clock me-1"></i>{{ uapt.appointment_time }}</span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('patient_details', patient_id=uapt.patient_id) }}" class="fw-semibold text-white text-decoration-none">
+                                        {{ uapt.patient_name }}
+                                    </a>
+                                </td>
+                                <td><span class="text-secondary small">{{ uapt.reason }}</span></td>
+                                <td><span class="badge-status badge-{{ uapt.status | lower }}">{{ uapt.status }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-4 text-center text-secondary small">No upcoming consultations booked in advance.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Doctor Profile & Clinical Notes -->
+    <div class="col-lg-4">
+        <!-- Clinic Profile Card -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom mb-0">
+                    <i class="bi bi-person-badge text-teal" style="color: var(--primary-teal);"></i>
+                    Clinic Roster Information
+                </h5>
+            </div>
+            <div class="card-body-custom">
+                {% if doctor_profile %}
+                <ul class="list-unstyled mb-0 small">
+                    <li class="mb-2 pb-2 border-bottom border-secondary-subtle d-flex justify-content-between">
+                        <span class="text-secondary">Specialization:</span>
+                        <strong class="text-white">{{ doctor_profile.specialization }}</strong>
+                    </li>
+                    <li class="mb-2 pb-2 border-bottom border-secondary-subtle d-flex justify-content-between">
+                        <span class="text-secondary">Department:</span>
+                        <strong class="text-white">{{ doctor_profile.department }}</strong>
+                    </li>
+                    <li class="mb-2 pb-2 border-bottom border-secondary-subtle d-flex justify-content-between">
+                        <span class="text-secondary">Office Hours:</span>
+                        <strong class="text-warning">{{ doctor_profile.availability }}</strong>
+                    </li>
+                    <li class="mb-2 pb-2 border-bottom border-secondary-subtle d-flex justify-content-between">
+                        <span class="text-secondary">Contact Phone:</span>
+                        <strong class="text-white">{{ doctor_profile.phone }}</strong>
+                    </li>
+                    <li class="mb-2 pb-2 border-bottom border-secondary-subtle d-flex justify-content-between">
+                        <span class="text-secondary">Official Email:</span>
+                        <strong class="text-white">{{ doctor_profile.email }}</strong>
+                    </li>
+                    <li class="d-flex justify-content-between align-items-center pt-1">
+                        <span class="text-secondary">Consultation Fee:</span>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle font-monospace fw-bold fs-6">
+                            ₹{{ "%.2f"|format(doctor_profile.consultation_fee) }}
+                        </span>
+                    </li>
+                </ul>
+                {% else %}
+                <p class="text-secondary small mb-0">Doctor profile linked to account.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Clinical Guidelines Widget -->
+        <div class="p-3 rounded-3 border" style="background-color: #111C2B; border-color: #1F334A !important;">
+            <h6 class="fw-bold mb-2 text-white"><i class="bi bi-check2-circle text-success me-2"></i>OPD Protocol</h6>
+            <p class="small text-secondary mb-2">
+                All patient consultations are synchronized in real-time across the centralized database. When a consultation concludes, click the green checkmark (<i class="bi bi-check2"></i>) to complete the session.
+            </p>
+            <div class="text-muted small font-monospace">
+                Node ID: {{ current_user.doctor_id }} • Central Sync Active
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Printable Hospital OPD Token Slip Modal -->
+<div class="modal fade" id="opdSlipModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0" style="background: transparent;">
+            <div class="opd-slip-card" id="printableOpdArea">
+                <div class="d-flex justify-content-between align-items-start border-bottom pb-3 mb-3">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="fs-4 text-teal" style="color: #0F9D8A;"><i class="bi bi-hospital-fill"></i></span>
+                            <h5 class="fw-bold mb-0 text-dark">MediCare Hospital</h5>
+                        </div>
+                        <p class="text-secondary small mb-0">Doctor Consultation Slip • Patient Copy</p>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-dark font-monospace fs-6 px-2 py-1" id="slipAptId">APT-1001</span>
+                    </div>
+                </div>
+
+                <div class="text-center my-2">
+                    <div class="opd-barcode-sim" id="slipBarcode">||||| ||| |||| || |||||||</div>
+                    <div class="text-muted font-monospace small" id="slipBarcodeText">APT-1001-OPD-TOKEN</div>
+                </div>
+
+                <div class="p-3 bg-light rounded my-3 border text-dark">
+                    <div class="row g-2 small">
+                        <div class="col-6">
+                            <span class="text-secondary d-block">Patient Name:</span>
+                            <strong class="fs-6" id="slipPatientName">Alexander Hayes</strong>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-secondary d-block">Patient ID:</span>
+                            <strong class="font-monospace" id="slipPatientId">PAT-1001</strong>
+                        </div>
+                        <div class="col-6 mt-2">
+                            <span class="text-secondary d-block">Doctor:</span>
+                            <strong id="slipDoctorName">Dr. Sarah Smith</strong>
+                        </div>
+                        <div class="col-6 mt-2">
+                            <span class="text-secondary d-block">Specialization:</span>
+                            <span id="slipDoctorSpec">Cardiology</span>
+                        </div>
+                        <div class="col-6 mt-2">
+                            <span class="text-secondary d-block">Date & Time:</span>
+                            <strong class="text-primary" id="slipDateTime">2026-10-15 at 09:30</strong>
+                        </div>
+                        <div class="col-6 mt-2">
+                            <span class="text-secondary d-block">Consultation Fee:</span>
+                            <strong class="text-success fs-6" id="slipFee">₹750.00</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="small text-secondary mb-3">
+                    <strong>Reason for Consultation:</strong> <span id="slipReason">Routine cardiac checkup</span>
+                </div>
+
+                <div class="border-top pt-2 d-flex justify-content-between align-items-center small text-muted">
+                    <span><i class="bi bi-shield-check text-success me-1"></i>Central Node Verified</span>
+                    <span id="slipPrintDate">Print Slip</span>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-3 no-print">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-teal btn-sm fw-semibold" onclick="window.print()">
+                    <i class="bi bi-printer me-1"></i>Print Token Slip
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showOpdSlip(aptId, patName, patId, docName, docSpec, dateStr, timeStr, reasonStr, statusStr, feeStr) {
+    document.getElementById('slipAptId').textContent = aptId;
+    document.getElementById('slipPatientName').textContent = patName;
+    document.getElementById('slipPatientId').textContent = patId;
+    document.getElementById('slipDoctorName').textContent = docName;
+    document.getElementById('slipDoctorSpec').textContent = docSpec;
+    document.getElementById('slipDateTime').textContent = `${dateStr} at ${timeStr}`;
+    document.getElementById('slipReason').textContent = reasonStr || 'General consultation';
+    document.getElementById('slipFee').textContent = '₹' + parseFloat(feeStr).toFixed(2);
+    document.getElementById('slipBarcode').textContent = `||| ${aptId.replace('-', ' ')} |||||`;
+    document.getElementById('slipBarcodeText').textContent = `${aptId} • TOKEN • MEDI-CARE`;
+    document.getElementById('slipPrintDate').textContent = new Date().toLocaleString();
+
+    const slipModal = new bootstrap.Modal(document.getElementById('opdSlipModal'));
+    slipModal.show();
+}
+</script>
+{% endblock %}

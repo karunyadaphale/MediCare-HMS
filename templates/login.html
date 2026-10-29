@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In — MediCare HMS{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <!-- Card Header -->
+        <div class="auth-header">
+            <div class="auth-logo-badge">
+                <i class="bi bi-hospital"></i>
+            </div>
+            <h3 class="fw-bold mb-1 text-white">MediCare HMS</h3>
+            <p class="text-white-50 small mb-0">Distributed Hospital Management System</p>
+        </div>
+
+        <!-- Card Body -->
+        <div class="auth-body">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show p-2 small" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close p-2" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form action="{{ url_for('login') }}" method="POST" autocomplete="off">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                <div class="mb-3">
+                    <label for="username" class="form-label-custom">Username or Staff ID</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-person"></i></span>
+                        <input type="text" class="form-control form-control-custom border-start-0" id="username" name="username" required placeholder="e.g. admin or receptionist" autocomplete="off">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label for="password" class="form-label-custom">Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-lock"></i></span>
+                        <input type="password" class="form-control form-control-custom border-start-0 border-end-0" id="password" name="password" required placeholder="••••••••" autocomplete="new-password">
+                        <button class="btn btn-outline-secondary border-start-0" style="background-color: #172335; border-color: #283D57;" type="button" id="togglePassword">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-teal w-100 py-2 fw-semibold">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>Sign In to Hospital Portal
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

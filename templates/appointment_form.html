@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Book Appointment — MediCare HMS{% endblock %}
+{% block page_title %}Schedule New Appointment{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card-custom">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-calendar-plus text-teal" style="color: var(--primary-teal);"></i>
+                    New Consultation Booking
+                </h5>
+                <a href="{{ url_for('appointments') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Schedule
+                </a>
+            </div>
+
+            <div class="card-body-custom">
+                <div class="alert alert-info py-2 px-3 small d-flex align-items-center gap-2 mb-4">
+                    <i class="bi bi-shield-check fs-5"></i>
+                    <div>
+                        <strong>Distributed Concurrency Check:</strong> MediCare HMS performs server-side conflict detection on MongoDB to prevent double-booking. If another client books the same doctor at the same slot, the system rejects the second request safely.
+                    </div>
+                </div>
+
+                <form method="POST" action="{{ url_for('appointment_new') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                    <div class="row g-3">
+                        <!-- Patient Select -->
+                        <div class="col-md-6">
+                            <label class="form-label-custom" for="patient_id">Select Patient <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-custom" id="patient_id" name="patient_id" required>
+                                <option value="">-- Choose Registered Patient --</option>
+                                {% for p in patients %}
+                                <option value="{{ p.patient_id }}" {% if (selected_patient and selected_patient == p.patient_id) %}selected{% endif %}>
+                                    {{ p.name }} ({{ p.patient_id }}) — {{ p.phone }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text small">
+                                Not in list? <a href="{{ url_for('patient_new') }}" target="_blank">Register new patient</a>
+                            </div>
+                        </div>
+
+                        <!-- Doctor Select -->
+                        <div class="col-md-6">
+                            <label class="form-label-custom" for="doctor_id">Select Doctor <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-custom" id="doctor_id" name="doctor_id" required>
+                                <option value="">-- Choose Medical Specialist --</option>
+                                {% for d in doctors %}
+                                <option value="{{ d.doctor_id }}" {% if (selected_doctor and selected_doctor == d.doctor_id) %}selected{% endif %}>
+                                    {{ d.name }} — {{ d.specialization }} (₹{{ "%.2f"|format(d.consultation_fee) }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Appointment Date -->
+                        <div class="col-md-6">
+                            <label class="form-label-custom" for="appointment_date">Appointment Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control form-control-custom" id="appointment_date" name="appointment_date" 
+                                   value="{{ selected_date or min_date }}" min="{{ min_date }}" required>
+                        </div>
+
+                        <!-- Appointment Time -->
+                        <div class="col-md-6">
+                            <label class="form-label-custom" for="appointment_time">Time Slot <span class="text-danger">*</span></label>
+                            <input type="time" class="form-control form-control-custom" id="appointment_time" name="appointment_time" 
+                                   value="{{ selected_time or '10:00' }}" required>
+                            <div class="form-text small">Standard clinic hours: 09:00 to 18:00</div>
+                        </div>
+
+                        <!-- Reason / Symptoms -->
+                        <div class="col-12">
+                            <label class="form-label-custom" for="reason">Reason for Visit / Clinical Symptoms</label>
+                            <textarea class="form-control form-control-custom" id="reason" name="reason" rows="3" 
+                                      placeholder="e.g. Routine checkup, fever, migraine symptoms, follow-up">{{ reason or '' }}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                        <a href="{{ url_for('appointments') }}" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-teal px-4">
+                            <i class="bi bi-calendar-check me-1"></i>Confirm Booking
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

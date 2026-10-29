@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Medical Staff — MediCare HMS{% endblock %}
+{% block page_title %}Doctor Directory & Staff Management{% endblock %}
+
+{% block content %}
+<!-- Role-Specialized Doctors Header -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    {% if current_user.role == 'doctor' %}
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h4 class="fw-bold mb-0 text-white">🩺 Medical Staff & My Clinical Profile</h4>
+            <span class="badge bg-success-subtle text-success border border-success-subtle">OPD Doctors</span>
+        </div>
+        <p class="text-secondary small mb-0">Hospital physician roster • Review timings, room availability, and consultation tariffs</p>
+    </div>
+    <div>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-teal fw-semibold">
+            <i class="bi bi-heart-pulse-fill me-1"></i>My OPD Consultation Desk
+        </a>
+    </div>
+    {% elif current_user.role == 'receptionist' %}
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h4 class="fw-bold mb-0 text-white">👨‍⚕️ Available Doctors on Duty & Consultation Tariffs</h4>
+            <span class="badge bg-info-subtle text-info border border-info-subtle">Front Desk Roster</span>
+        </div>
+        <p class="text-secondary small mb-0">Total {{ doctors | length }} specialists registered • Select any active doctor to book an OPD slot</p>
+    </div>
+    <div>
+        <a href="{{ url_for('appointment_new') }}" class="btn btn-teal fw-semibold">
+            <i class="bi bi-ticket-perforated me-1"></i>Book New Slot
+        </a>
+    </div>
+    {% else %}
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h4 class="fw-bold mb-0 text-white">👨‍⚕️ Doctor Staff Directory & Tariff Administration</h4>
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Executive Admin</span>
+        </div>
+        <p class="text-secondary small mb-0">Total {{ doctors | length }} specialists registered • Manage doctor active status and fees in ₹</p>
+    </div>
+    <div>
+        <a href="{{ url_for('doctor_new') }}" class="btn btn-teal fw-semibold">
+            <i class="bi bi-person-plus-fill me-1"></i>Add New Doctor
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Search & Filter Bar -->
+<div class="card-custom mb-4">
+    <div class="card-body-custom py-3">
+        <form method="GET" action="{{ url_for('doctors') }}" class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" value="{{ query }}" class="form-control form-control-custom border-start-0" placeholder="Search by Doctor Name, Specialization, Dept...">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select name="specialization" class="form-select form-select-custom">
+                    <option value="">All Specializations</option>
+                    {% for sp in specializations %}
+                    <option value="{{ sp }}" {% if specialization == sp %}selected{% endif %}>{{ sp }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="status" class="form-select form-select-custom">
+                    <option value="">All Statuses</option>
+                    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+                    <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-teal w-100"><i class="bi bi-funnel me-1"></i>Filter</button>
+                {% if query or specialization or status_filter %}
+                <a href="{{ url_for('doctors') }}" class="btn btn-outline-secondary" title="Reset Filters"><i class="bi bi-x-lg"></i></a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Doctors Grid View -->
+<div class="row g-4">
+    {% if doctors %}
+        {% for doc in doctors %}
+        <div class="col-md-6 col-xl-4">
+            <div class="card-custom h-100 d-flex flex-column">
+                <div class="card-body-custom flex-grow-1">
+                    <div class="d-flex align-items-start justify-content-between mb-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="avatar-circle" style="background: linear-gradient(135deg, #10B981, #059669); width: 46px; height: 46px; font-size: 1.15rem; font-weight: 700; color: #FFFFFF;">
+                                {{ doc.name.replace('Dr. ', '').strip()[:1] | upper }}
+                            </div>
+                            <div>
+                                <h6 class="fw-bold mb-0 text-white">{{ doc.name }}</h6>
+                                <span class="badge-id" style="font-size: 0.75rem;">{{ doc.doctor_id }}</span>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            {% if current_user.role == 'doctor' and doc.doctor_id == current_user.doctor_id %}
+                            <span class="badge bg-success text-white border border-success mb-1 d-block">
+                                <i class="bi bi-person-check-fill me-1"></i>Your Profile
+                            </span>
+                            {% endif %}
+                            {% if doc.active %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>
+                            {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary border">Inactive</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle me-1">
+                            {{ doc.specialization }}
+                        </span>
+                        <span class="badge bg-secondary-subtle text-light border border-secondary-subtle">
+                            {{ doc.department }}
+                        </span>
+                    </div>
+
+                    <div class="p-3 rounded-3 mt-3 border" style="background-color: #172437; border-color: #243953 !important;">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <i class="bi bi-clock-fill text-warning"></i>
+                            <span class="text-secondary small fw-medium">Hours:</span>
+                            <span class="text-light fw-medium small ms-auto text-end">{{ doc.availability }}</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <i class="bi bi-telephone-fill text-info"></i>
+                            <span class="text-secondary small fw-medium">Phone:</span>
+                            <span class="text-light fw-medium small ms-auto text-end">{{ doc.phone }}</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <i class="bi bi-envelope-fill" style="color: var(--primary-teal);"></i>
+                            <span class="text-secondary small fw-medium">Email:</span>
+                            <span class="text-light fw-medium small ms-auto text-end text-truncate" style="max-width: 170px;">{{ doc.email or '—' }}</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 pt-2 border-top" style="border-top-color: #243953 !important;">
+                            <i class="bi bi-cash-stack text-success"></i>
+                            <span class="text-secondary small fw-medium">Consultation Fee:</span>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle font-monospace fw-bold ms-auto" style="font-size: 0.85rem;">
+                                ₹{{ "%.2f"|format(doc.consultation_fee) }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-footer border-top px-3 py-2 d-flex justify-content-between align-items-center" style="background-color: #101B2B; border-color: #203147 !important;">
+                    {% if current_user.role in ['admin', 'receptionist'] and doc.active %}
+                    <a href="{{ url_for('appointment_new') }}" class="btn btn-sm btn-teal py-1 px-3 fw-semibold" style="font-size: 0.82rem;">
+                        <i class="bi bi-calendar-check me-1"></i>Book Slot
+                    </a>
+                    {% else %}
+                    <span></span>
+                    {% endif %}
+
+                    {% if current_user.role == 'admin' %}
+                    <div class="btn-group btn-group-sm">
+                        <a href="{{ url_for('doctor_edit', doctor_id=doc.doctor_id) }}" class="btn btn-outline-info" title="Edit Doctor Profile">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <form action="{{ url_for('doctor_toggle_status', doctor_id=doc.doctor_id) }}" method="POST" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="btn btn-outline-{{ 'warning' if doc.active else 'success' }}" 
+                                    title="{{ 'Deactivate' if doc.active else 'Reactivate' }}">
+                                <i class="bi bi-{{ 'pause-circle' if doc.active else 'play-circle' }}"></i>
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+    <div class="col-12">
+        <div class="card-custom">
+            <div class="card-body-custom">
+                <div class="empty-state">
+                    <div class="empty-state-icon"><i class="bi bi-hospital"></i></div>
+                    <div class="empty-state-title">No doctors matching criteria</div>
+                    <p class="empty-state-desc">Try clearing your filters or add a new doctor record to the medical staff.</p>
+                    {% if current_user.role == 'admin' %}
+                    <a href="{{ url_for('doctor_new') }}" class="btn btn-teal btn-sm">
+                        <i class="bi bi-plus-lg me-1"></i>Add Doctor
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

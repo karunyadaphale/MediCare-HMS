@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — MediCare HMS{% endblock %}
+{% block page_title %}Hospital Administration Dashboard{% endblock %}
+
+{% block content %}
+<!-- Welcome & Quick Actions Bar -->
+<div class="row align-items-center mb-4 g-3">
+    <div class="col-md-7">
+        <h4 class="fw-bold mb-1 text-navy">Welcome, {{ current_user.full_name }}</h4>
+        <p class="text-muted small mb-0">
+            Role: <span class="badge bg-light text-dark border text-uppercase">{{ current_user.role }}</span> | 
+            Today's Date: <strong>{{ today_str }}</strong> |
+            Distributed Node: <span class="text-success"><i class="bi bi-circle-fill me-1" style="font-size: 8px;"></i>Operational</span>
+        </p>
+    </div>
+    <div class="col-md-5 text-md-end">
+        <div class="d-flex flex-wrap gap-2 justify-content-md-end">
+            {% if current_user.role in ['admin', 'receptionist'] %}
+            <a href="{{ url_for('patient_new') }}" class="btn btn-teal-outline btn-sm">
+                <i class="bi bi-person-plus me-1"></i>Add Patient
+            </a>
+            <a href="{{ url_for('appointment_new') }}" class="btn btn-teal btn-sm">
+                <i class="bi bi-calendar-plus me-1"></i>Book Appointment
+            </a>
+            {% endif %}
+            {% if current_user.role == 'admin' %}
+            <a href="{{ url_for('doctor_new') }}" class="btn btn-teal-outline btn-sm">
+                <i class="bi bi-person-badge me-1"></i>Add Doctor
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 4 Key Metric Cards -->
+<div class="row g-3 mb-4">
+    <!-- Total Patients -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div>
+                <div class="stat-title">Total Patients</div>
+                <div class="stat-value">{{ total_patients }}</div>
+                <small class="text-muted">Registered in database</small>
+            </div>
+            <div class="stat-icon-wrapper stat-icon-teal">
+                <i class="bi bi-people-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Doctors -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div>
+                <div class="stat-title">Active Doctors</div>
+                <div class="stat-value">{{ total_doctors }}</div>
+                <small class="text-muted">On medical staff</small>
+            </div>
+            <div class="stat-icon-wrapper stat-icon-blue">
+                <i class="bi bi-hospital-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Today's Appointments -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div>
+                <div class="stat-title">Today's Appointments</div>
+                <div class="stat-value">{{ today_appointments_count }}</div>
+                <small class="text-muted">Scheduled for {{ today_str }}</small>
+            </div>
+            <div class="stat-icon-wrapper stat-icon-amber">
+                <i class="bi bi-clock-history"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending / Scheduled -->
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div>
+                <div class="stat-title">Pending Consultations</div>
+                <div class="stat-value">{{ pending_appointments_count }}</div>
+                <small class="text-muted">Awaiting completion</small>
+            </div>
+            <div class="stat-icon-wrapper stat-icon-green">
+                <i class="bi bi-calendar-check-fill"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Dashboard Grid -->
+<div class="row g-4">
+    <!-- Left Column: Today's Appointments -->
+    <div class="col-lg-8">
+        <div class="card-custom">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-calendar2-day text-teal" style="color: var(--primary-teal);"></i>
+                    Today's Scheduled Consultations
+                </h5>
+                <a href="{{ url_for('appointments') }}" class="btn btn-sm btn-link text-decoration-none">
+                    View All Appointments <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-body-custom p-0">
+                {% if today_appointments %}
+                <div class="table-responsive">
+                    <table class="table-custom mb-0">
+                        <thead>
+                            <tr>
+                                <th>Appointment ID</th>
+                                <th>Patient Name</th>
+                                <th>Doctor</th>
+                                <th>Time</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for apt in today_appointments %}
+                            <tr>
+                                <td><span class="badge-id">{{ apt.appointment_id }}</span></td>
+                                <td class="fw-medium text-navy">
+                                    <a href="{{ url_for('patient_details', patient_id=apt.patient_id) }}" class="text-decoration-none fw-semibold">
+                                        {{ apt.patient_name }}
+                                    </a>
+                                </td>
+                                <td>{{ apt.doctor_name }}</td>
+                                <td><i class="bi bi-clock me-1 text-muted"></i>{{ apt.appointment_time }}</td>
+                                <td>
+                                    <span class="badge-status badge-{{ apt.status | lower }}">
+                                        <i class="bi bi-circle-fill" style="font-size: 6px;"></i>
+                                        {{ apt.status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if apt.status == 'Scheduled' %}
+                                    <form action="{{ url_for('appointment_update_status', appointment_id=apt.appointment_id) }}" method="POST" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                        <input type="hidden" name="status" value="Completed">
+                                        <button type="submit" class="btn btn-sm btn-outline-success py-0 px-2" title="Mark Completed">
+                                            <i class="bi bi-check2"></i> Done
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <span class="text-muted small">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon"><i class="bi bi-calendar-x"></i></div>
+                    <div class="empty-state-title">No appointments scheduled for today</div>
+                    <p class="empty-state-desc">You can book new consultations for registered patients anytime.</p>
+                    {% if current_user.role in ['admin', 'receptionist'] %}
+                    <a href="{{ url_for('appointment_new') }}" class="btn btn-teal btn-sm">
+                        <i class="bi bi-plus-lg me-1"></i>Book New Appointment
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Distributed Concurrency Info Box -->
+        <div class="card p-3 border rounded-3 bg-white shadow-sm">
+            <div class="d-flex align-items-center gap-3">
+                <div class="p-2 bg-light rounded text-primary fs-3">
+                    <i class="bi bi-share"></i>
+                </div>
+                <div>
+                    <h6 class="fw-bold mb-1 text-navy">Centralized Multi-Client Architecture</h6>
+                    <p class="text-muted small mb-0">
+                        All patient records and schedule slots are synchronized in real-time across multiple client sessions.
+                        Sequential counter locks guarantee conflict-free IDs across concurrent network requests.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Status Distribution & Recent Patients -->
+    <div class="col-lg-4">
+        <!-- Appointment Status Distribution Card -->
+        <div class="card-custom mb-4">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-pie-chart text-teal" style="color: var(--primary-teal);"></i>
+                    Status Breakdown
+                </h5>
+            </div>
+            <div class="card-body-custom">
+                <div style="height: 190px; position: relative;">
+                    <canvas id="statusChart"></canvas>
+                </div>
+                <div class="d-flex justify-content-around mt-3 text-center border-top pt-2">
+                    <div>
+                        <div class="text-muted small">Scheduled</div>
+                        <div class="fw-bold text-warning">{{ status_counts['Scheduled'] }}</div>
+                    </div>
+                    <div>
+                        <div class="text-muted small">Completed</div>
+                        <div class="fw-bold text-success">{{ status_counts['Completed'] }}</div>
+                    </div>
+                    <div>
+                        <div class="text-muted small">Cancelled</div>
+                        <div class="fw-bold text-danger">{{ status_counts['Cancelled'] }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Patients Card -->
+        <div class="card-custom">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">
+                    <i class="bi bi-person-lines-fill text-teal" style="color: var(--primary-teal);"></i>
+                    Recent Registrations
+                </h5>
+                <a href="{{ url_for('patients') }}" class="btn btn-sm btn-link text-decoration-none">View All</a>
+            </div>
+            <div class="card-body-custom p-0">
+                {% if recent_patients %}
+                <ul class="list-group list-group-flush">
+                    {% for p in recent_patients %}
+                    <li class="list-group-item d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="avatar-circle" style="width: 34px; height: 34px; font-size: 0.8rem; background: #0F9D8A;">
+                                {{ p.name[:1] | upper }}
+                            </div>
+                            <div>
+                                <a href="{{ url_for('patient_details', patient_id=p.patient_id) }}" class="fw-semibold text-navy text-decoration-none d-block small">
+                                    {{ p.name }}
+                                </a>
+                                <span class="badge-id" style="font-size: 0.72rem;">{{ p.patient_id }}</span>
+                            </div>
+                        </div>
+                        <span class="text-muted small">{{ p.gender }}, Age {{ p.age }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="p-4 text-center text-muted small">No recent patients found.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const ctx = document.getElementById('statusChart');
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Scheduled', 'Completed', 'Cancelled'],
+                datasets: [{
+                    data: [
+                        {{ status_counts['Scheduled'] }},
+                        {{ status_counts['Completed'] }},
+                        {{ status_counts['Cancelled'] }}
+                    ],
+                    backgroundColor: ['#F59E0B', '#10B981', '#EF4444'],
+                    borderWidth: 3,
+                    borderColor: '#131E2E'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 }, color: '#94A3B8' } }
+                },
+                cutout: '65%'
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

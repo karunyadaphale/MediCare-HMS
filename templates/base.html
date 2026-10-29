@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MediCare HMS — Distributed Hospital Management{% endblock %}</title>
+    <!-- Favicon & Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    {% block head %}{% endblock %}
+</head>
+<body class="role-theme-{{ current_user.role if current_user else 'guest' }}">
+
+<div class="sidebar-backdrop"></div>
+
+<div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="app-sidebar">
+        <div class="sidebar-header">
+            <a href="{{ url_for('dashboard') }}" class="brand-logo text-decoration-none">
+                <div class="brand-icon">
+                    <i class="bi bi-hospital"></i>
+                </div>
+                <span>MediCare <span style="color: var(--primary-teal);">HMS</span></span>
+            </a>
+        </div>
+
+        <div class="sidebar-menu">
+            {% if current_user and current_user.role == 'doctor' %}
+                <!-- DOCTOR ROLE SPECIFIC NAVIGATION -->
+                <div class="menu-label">Clinical Station</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-link-custom {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    <i class="bi bi-heart-pulse-fill text-success"></i>
+                    <span>Doctor OPD Station</span>
+                </a>
+                <a href="{{ url_for('appointments') }}" class="nav-link-custom {% if request.endpoint and 'appointment' in request.endpoint %}active{% endif %}">
+                    <i class="bi bi-person-lines-fill text-teal" style="color: var(--primary-teal);"></i>
+                    <span>My Patient Queue</span>
+                </a>
+                <a href="{{ url_for('patients') }}" class="nav-link-custom {% if request.endpoint and 'patient' in request.endpoint %}active{% endif %}">
+                    <i class="bi bi-clipboard2-pulse"></i>
+                    <span>Assigned Patients</span>
+                </a>
+                <a href="{{ url_for('doctors') }}" class="nav-link-custom {% if request.endpoint and 'doctor' in request.endpoint %}active{% endif %}">
+                    <i class="bi bi-clock-history"></i>
+                    <span>My Profile & Tariffs</span>
+                </a>
+
+            {% elif current_user and current_user.role == 'receptionist' %}
+                <!-- RECEPTIONIST ROLE SPECIFIC NAVIGATION -->
+                <div class="menu-label">Front Desk Desk</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-link-custom {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    <i class="bi bi-headset text-info"></i>
+                    <span>Front Desk Portal</span>
+                </a>
+                <a href="{{ url_for('patient_new') }}" class="nav-link-custom {% if request.endpoint == 'patient_new' %}active{% endif %}">
+                    <i class="bi bi-person-plus-fill text-teal" style="color: var(--primary-teal);"></i>
+                    <span>Register Walk-In</span>
+                </a>
+                <a href="{{ url_for('patients') }}" class="nav-link-custom {% if request.endpoint and 'patient' in request.endpoint and request.endpoint != 'patient_new' %}active{% endif %}">
+                    <i class="bi bi-people"></i>
+                    <span>Patient Admissions</span>
+                </a>
+                <a href="{{ url_for('appointments') }}" class="nav-link-custom {% if request.endpoint and 'appointment' in request.endpoint %}active{% endif %}">
+                    <i class="bi bi-ticket-perforated"></i>
+                    <span>Queue & Token Booking</span>
+                </a>
+                <a href="{{ url_for('doctors') }}" class="nav-link-custom {% if request.endpoint and 'doctor' in request.endpoint %}active{% endif %}">
+                    <i class="bi bi-person-badge"></i>
+                    <span>Doctors on Duty (Fees)</span>
+                </a>
+
+            {% else %}
+                <!-- ADMINISTRATOR / DEFAULT NAVIGATION -->
+                <div class="menu-label">Hospital Administration</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-link-custom {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    <i class="bi bi-grid-1x2-fill text-danger"></i>
+                    <span>Executive Command</span>
+                </a>
+                <a href="{{ url_for('patients') }}" class="nav-link-custom {% if request.endpoint and 'patient' in request.endpoint %}active{% endif %}">
+                    <i class="bi bi-people"></i>
+                    <span>Master Patients</span>
+                </a>
+                <a href="{{ url_for('doctors') }}" class="nav-link-custom {% if request.endpoint and 'doctor' in request.endpoint %}active{% endif %}">
+                    <i class="bi bi-person-badge"></i>
+                    <span>Doctor Staff & Tariffs</span>
+                </a>
+                <a href="{{ url_for('appointments') }}" class="nav-link-custom {% if request.endpoint and 'appointment' in request.endpoint %}active{% endif %}">
+                    <i class="bi bi-calendar-check"></i>
+                    <span>All Hospital Appointments</span>
+                </a>
+                <div class="menu-label">Financials & Analytics</div>
+                <a href="{{ url_for('reports') }}" class="nav-link-custom {% if request.endpoint == 'reports' %}active{% endif %}">
+                    <i class="bi bi-bar-chart-line"></i>
+                    <span>Revenue & Analytics (₹)</span>
+                </a>
+            {% endif %}
+
+            <div class="menu-label">Distributed Systems</div>
+            <a href="#" class="nav-link-custom" data-bs-toggle="modal" data-bs-target="#architectureModal">
+                <i class="bi bi-diagram-3"></i>
+                <span>System Architecture</span>
+            </a>
+            <a href="/api/system-info" target="_blank" class="nav-link-custom">
+                <i class="bi bi-code-slash"></i>
+                <span>Live REST API</span>
+            </a>
+        </div>
+
+        <!-- Sidebar User Footer -->
+        {% if current_user %}
+        <div class="sidebar-footer">
+            <div class="user-snippet">
+                <div class="avatar-circle">
+                    {{ current_user.full_name[:1] | upper }}
+                </div>
+                <div class="user-info-text">
+                    <div class="user-name">{{ current_user.full_name }}</div>
+                    <span class="user-role-badge role-{{ current_user.role }}">
+                        {{ current_user.role }}
+                    </span>
+                </div>
+                <a href="{{ url_for('logout') }}" class="text-white-50 ms-auto" title="Sign Out">
+                    <i class="bi bi-box-arrow-right fs-5"></i>
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </aside>
+
+    <!-- Main Content Shell -->
+    <div class="app-main">
+        <!-- Topbar -->
+        <header class="app-topbar">
+            <div class="topbar-left">
+                <button class="btn btn-sm btn-light d-lg-none" id="sidebarToggleBtn" aria-label="Toggle Navigation">
+                    <i class="bi bi-list fs-5"></i>
+                </button>
+                <h1 class="topbar-title">{% block page_title %}Dashboard{% endblock %}</h1>
+            </div>
+
+            <div class="topbar-right">
+                <!-- Quick Role Screen Switcher for College PBL Presentation -->
+                {% if current_user %}
+                <div class="role-switcher-pill-box d-none d-md-flex align-items-center" title="Instant Role Screen Switcher for College PBL Viva">
+                    <span class="role-switcher-label"><i class="bi bi-person-gear me-1"></i>Role View:</span>
+                    <a href="{{ url_for('switch_role', role_name='admin') }}" 
+                       class="role-switch-btn {% if current_user.role == 'admin' %}active-admin{% endif %}"
+                       title="Switch to Administrator Command Station">
+                        <i class="bi bi-shield-lock-fill"></i> Admin
+                    </a>
+                    <a href="{{ url_for('switch_role', role_name='receptionist') }}" 
+                       class="role-switch-btn {% if current_user.role == 'receptionist' %}active-receptionist{% endif %}"
+                       title="Switch to Front Desk Receptionist Station">
+                        <i class="bi bi-headset"></i> Receptionist
+                    </a>
+                    <a href="{{ url_for('switch_role', role_name='doctor') }}" 
+                       class="role-switch-btn {% if current_user.role == 'doctor' %}active-doctor{% endif %}"
+                       title="Switch to Doctor Clinical Station">
+                        <i class="bi bi-heart-pulse-fill"></i> Dr. Sharma
+                    </a>
+                </div>
+                {% endif %}
+
+                <!-- Distributed Network Status -->
+                <div class="network-badge" title="Centralized Distributed Database Status">
+                    <span class="network-pulse"></span>
+                    <span>Client IP: <strong>{{ client_ip }}</strong></span>
+                    <span class="text-muted d-none d-lg-inline">|</span>
+                    <span class="d-none d-lg-inline">
+                        {% if db_health.is_mock %}
+                        <span class="badge bg-info-subtle text-info border"><i class="bi bi-hdd me-1"></i>In-Memory Node</span>
+                        {% else %}
+                        <span class="badge bg-success-subtle text-success border"><i class="bi bi-database-check me-1"></i>MongoDB Connected</span>
+                        {% endif %}
+                    </span>
+                </div>
+
+                {% if current_user %}
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-light border dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle text-muted"></i>
+                        <span class="d-none d-sm-inline">{{ current_user.username }}</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                        <li><h6 class="dropdown-header">{{ current_user.full_name }} ({{ current_user.role }})</h6></li>
+                        <li><a class="dropdown-item" href="{{ url_for('switch_role', role_name='admin') }}"><i class="bi bi-shield-lock me-2 text-danger"></i>Switch to Admin</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('switch_role', role_name='receptionist') }}"><i class="bi bi-headset me-2 text-info"></i>Switch to Receptionist</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('switch_role', role_name='doctor') }}"><i class="bi bi-heart-pulse me-2 text-success"></i>Switch to Dr. Sharma</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#architectureModal"><i class="bi bi-info-circle me-2"></i>Network Nodes</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Sign Out</a></li>
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </header>
+
+        <!-- Role Station Announcement Banner -->
+        {% if current_user %}
+            {% if current_user.role == 'doctor' %}
+            <div class="role-station-banner banner-doctor">
+                <div class="role-station-tag">
+                    <i class="bi bi-heart-pulse-fill text-success fs-6"></i>
+                    <span>ATTENDING PHYSICIAN CLINICAL OPD STATION • Chamber 104 • {{ current_user.full_name }}</span>
+                </div>
+                <div class="role-station-quicklinks">
+                    <span class="badge bg-success-subtle text-success border border-success-subtle">OPD Active</span>
+                    <a href="{{ url_for('appointments') }}" class="text-white-50 text-decoration-none">
+                        <i class="bi bi-calendar2-check me-1"></i>Queue Schedule
+                    </a>
+                </div>
+            </div>
+            {% elif current_user.role == 'receptionist' %}
+            <div class="role-station-banner banner-receptionist">
+                <div class="role-station-tag">
+                    <i class="bi bi-headset text-info fs-6"></i>
+                    <span>FRONT DESK PATIENT ADMISSION & TRIAGE DESK • Station Officer: {{ current_user.full_name }}</span>
+                </div>
+                <div class="role-station-quicklinks">
+                    <a href="{{ url_for('patient_new') }}" class="badge bg-info-subtle text-info border border-info-subtle text-decoration-none">
+                        <i class="bi bi-plus-circle me-1"></i>New Admission
+                    </a>
+                    <a href="{{ url_for('appointment_new') }}" class="badge bg-primary-subtle text-primary border border-primary-subtle text-decoration-none">
+                        <i class="bi bi-ticket-perforated me-1"></i>Book Slot
+                    </a>
+                </div>
+            </div>
+            {% else %}
+            <div class="role-station-banner banner-admin">
+                <div class="role-station-tag">
+                    <i class="bi bi-shield-lock-fill text-danger fs-6"></i>
+                    <span>EXECUTIVE HOSPITAL COMMAND & CONTROL CENTER • Full System & Financial Oversight</span>
+                </div>
+                <div class="role-station-quicklinks">
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Admin Privileges</span>
+                    <a href="{{ url_for('reports') }}" class="text-white-50 text-decoration-none">
+                        <i class="bi bi-graph-up me-1"></i>Financial Reports (₹)
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        {% endif %}
+
+        <!-- Floating Toast Flash Alerts -->
+        <div class="toast-container-fixed">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm alert-auto-dismiss d-flex align-items-center gap-2" role="alert">
+                            {% if category == 'success' %}
+                                <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                            {% elif category == 'danger' %}
+                                <i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i>
+                            {% elif category == 'warning' %}
+                                <i class="bi bi-exclamation-circle-fill text-warning fs-5"></i>
+                            {% else %}
+                                <i class="bi bi-info-circle-fill text-info fs-5"></i>
+                            {% endif %}
+                            <div class="flex-grow-1">{{ message }}</div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <!-- Main Body Content -->
+        <main class="page-body">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</div>
+
+<!-- Architecture & Distributed Systems Explainer Modal (For PBL College Demo) -->
+<div class="modal fade" id="architectureModal" tabindex="-1" aria-labelledby="architectureModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-bottom">
+                <h5 class="modal-title fw-bold" id="architectureModalLabel">
+                    <i class="bi bi-diagram-3-fill text-teal me-2" style="color: var(--primary-teal);"></i>
+                    Distributed Systems Architecture Demonstration
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="p-3 mb-3 bg-light rounded border">
+                    <h6 class="fw-bold mb-2 text-navy">Live Node Information:</h6>
+                    <ul class="list-unstyled mb-0 small text-secondary">
+                        <li><strong>Current Client Node:</strong> HTTP Client at IP <code>{{ client_ip }}</code></li>
+                        <li><strong>Application Server Node:</strong> Python 3.11 / Flask Server (Stateful Session / Stateless REST API)</li>
+                        <li><strong>Central Database Node:</strong> Central MongoDB (Database: <code>{{ db_health.database }}</code>, Mode: {{ 'Resilient In-Memory Mock' if db_health.is_mock else 'MongoDB Atlas Cloud Cluster' }})</li>
+                        <li><strong>Server UTC Time:</strong> {{ server_time }}</li>
+                    </ul>
+                </div>
+
+                <div class="card p-3 mb-3 border">
+                    <h6 class="fw-bold text-navy mb-2"><i class="bi bi-arrow-repeat text-primary me-2"></i>Client-Server Data Flow</h6>
+                    <pre class="bg-dark text-light p-3 rounded mb-0 small" style="font-family: monospace;">
+Browser / Client A (Receptionist) ──┐
+                                     ├── HTTP / REST ──> Flask Server (Port 5000) ──> Central MongoDB Atlas
+Browser / Client B (Doctor / Admin) ─┘                   (Concurrency & RBAC)          (Atomic Counters & Indexes)
+                    </pre>
+                </div>
+
+                <h6 class="fw-bold text-navy mb-2">PBL Demonstration Checklist:</h6>
+                <ol class="small text-muted mb-0">
+                    <li>Open <strong>MediCare HMS</strong> on two browser windows (or one laptop and one mobile on local Wi-Fi).</li>
+                    <li>Sign in as <strong>Receptionist</strong> on Client A and register a patient.</li>
+                    <li>Instantly search for that patient on Client B (logged in as <strong>Doctor</strong>).</li>
+                    <li>Book an appointment and test the <strong>backend conflict detector</strong> by attempting to double-book the same doctor at the same hour.</li>
+                </ol>
+            </div>
+            <div class="modal-footer border-top">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap 5 JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Custom JS -->
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}403 Forbidden — MediCare HMS{% endblock %}
+{% block page_title %}Access Denied{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-5">
+    <div class="col-md-7 text-center">
+        <div class="p-5 bg-white rounded-4 border shadow-sm">
+            <div class="display-1 text-danger fw-bold mb-3"><i class="bi bi-shield-slash-fill"></i> 403</div>
+            <h4 class="fw-bold text-navy mb-2">Access Forbidden</h4>
+            <p class="text-muted mb-4">{{ message or 'You do not have the required administrative role to view this hospital resource.' }}</p>
+            <div class="d-flex justify-content-center gap-3">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-teal">
+                    <i class="bi bi-house-door me-1"></i>Return to Dashboard
+                </a>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-person-switch me-1"></i>Sign in with Another Account
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
